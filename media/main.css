@@ -1,0 +1,13 @@
+body {
+	background-color: transparent;
+}
+
+#canvas-container {
+	overflow: auto;
+}
+
+#canvas-area {
+	padding: 0;
+	margin: auto;
+	display: block;
+}

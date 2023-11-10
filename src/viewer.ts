@@ -1,71 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 
-function generateHtmlContent(imageData: string): string {
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body>
-<img src="https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif" width="300" />
-<div id="canvas-container" style="overflow: auto">
-    <canvas id="canvas-area" style="padding: 0; margin: auto; display: block"></canvas>
-</div>
-<script>
-    let scale = 1;
-    const jsonStr = '${imageData}';
-    var message = JSON.parse(jsonStr);
-    const canvas = document.getElementById('canvas-area');
-
-    function scaleCanvas(targetCanvas, scale) {
-        const { pixels, width, height } = message;
-
-        // Write the pixels to an ImageData object
-        const data = new Uint8ClampedArray(width * height * 4);
-        for (let row = 0; row < height; row++) {
-            for (let col = 0; col < width; col++) {
-                let color = pixels[row * width + col];
-                let i = row * 4 * width + col * 4;
-                data[i + 0] = color.r;
-                data[i + 1] = color.g;
-                data[i + 2] = color.b;
-                data[i + 3] = 255;
-            }
-        }
-        const id = new ImageData(data, width, height);
-
-        // Write the ImageData to a background canvas
-        const backCanvas = document.createElement('canvas');
-        backCanvas.width = id.width;
-        backCanvas.height = id.height;
-        backCanvas.getContext('2d').putImageData(id, 0, 0);
-
-        // Scale the target canvas and write the background canvas to it
-        const ctx = targetCanvas.getContext('2d');
-        targetCanvas.width = width * scale;
-        targetCanvas.height = height * scale;
-        ctx.scale(scale, scale);
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(backCanvas, 0, 0);
-    }
-
-    function showImg(scale) {
-        const { pixels, width, height } = message;
-        scaleCanvas(canvas, scale);
-    }
-    showImg(scale);
-
-    window.addEventListener('message', event => {
-        message = event.data;
-        showImg(scale);
-    });
-</script>
-</body>
-</html>`;
-}
-
 function parseByteFormat(byteData: Uint8Array) {
     return { pixels: true, width: 256, height: 128 };
 }
@@ -127,16 +62,20 @@ export class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider
         return document;
     }
 
-    async resolveCustomEditor(document: ImagePreviewDocument, webviewPanel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
+    async resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
         // setup initial content for the webview
-        webviewPanel.webview.options = { enableScripts: true };
-        webviewPanel.webview.html = generateHtmlContent(document.imageData);
+        panel.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [this._context.extensionUri]
+        };
+        panel.webview.html = this._generateHtmlContent(panel.webview, document.imageData);
 
+        // listen for any file changes
         const watcherAction = async (e: vscode.Uri) => {
             const docUriPath = document.uri.path.replace(/(\/[A-Z]:\/)/, (match) => match.toLowerCase());
             if (docUriPath === e.path) {
                 const newDocument = await ImagePreviewDocument.create(vscode.Uri.parse(e.path));
-                webviewPanel.webview.postMessage(newDocument.imageData);
+                panel.webview.postMessage(newDocument.imageData);
             }
         };
 
@@ -148,8 +87,45 @@ export class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider
         const globalWatcher = vscode.workspace.createFileSystemWatcher(pattern);
         const globalChangeFileSubscription = globalWatcher.onDidChange(watcherAction);
 
-        webviewPanel.onDidDispose(() => {
+        panel.onDidDispose(() => {
             globalChangeFileSubscription.dispose();
         });
     }
+
+    private _generateHtmlContent(webview: vscode.Webview, imageData: string): string {
+        // convert local path of project files to a uri we can use in the webview
+        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'main.js'));
+        const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'reset.css'));
+        const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'vscode.css'));
+        const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'main.css'));
+
+        // use a content security policy to only allow loading styles from our extension
+        // directory, and use a nonce to only allow a specific script to be run.
+        const nonce = getNonce();
+
+        return `<!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <link href="${styleResetUri}" rel="stylesheet>
+                <link href="${styleVSCodeUri}" rel="stylesheet>
+                <link href="${styleMainUri}" rel="stylesheet>
+            </head>
+            <body>
+                <div id="canvas-container"><canvas id="canvas-area"></canvas></div>
+                <script nonce="${nonce}" src="${scriptUri}"></script>
+            </body>
+            </html>`;
+    }
+}
+
+function getNonce(): string {
+    let text = '';
+    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    for (let i = 0; i < 32; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
 }
