@@ -165,85 +165,102 @@ submitted to the exclusive jurisdiction of the Swedish Courts.
 //// (C) Ericsson AB 2005-2013. All Rights Reserved.
 //// 
 
-#include <stdio.h>
-#include <stdlib.h>
+//#include <stdio.h>
+//#include <stdlib.h>
 
 // Typedefs
-typedef unsigned char uint8;
-typedef unsigned short uint16;
-typedef short int16;
+type int = number;
+type uint8 = number;
+type uint16 = number;
+type int16 = number;
 
 // Macros to help with bit extraction/insertion
-#define SHIFT(size,startpos) ((startpos)-(size)+1)
-#define MASK(size, startpos) (((2<<(size-1))-1) << SHIFT(size,startpos))
-#define PUTBITS( dest, data, size, startpos) dest = ((dest & ~MASK(size, startpos)) | ((data << SHIFT(size, startpos)) & MASK(size,startpos)))
-#define SHIFTHIGH(size, startpos) (((startpos)-32)-(size)+1)
-#define MASKHIGH(size, startpos) (((1<<(size))-1) << SHIFTHIGH(size,startpos))
-#define PUTBITSHIGH(dest, data, size, startpos) dest = ((dest & ~MASKHIGH(size, startpos)) | ((data << SHIFTHIGH(size, startpos)) & MASKHIGH(size,startpos)))
-#define GETBITS(source, size, startpos)  (( (source) >> ((startpos)-(size)+1) ) & ((1<<(size)) -1))
-#define GETBITSHIGH(source, size, startpos)  (( (source) >> (((startpos)-32)-(size)+1) ) & ((1<<(size)) -1))
-#ifndef PGMOUT
-#define PGMOUT 1
-#endif
+const SHIFT = (size, startpos) => ((startpos)-(size)+1);
+const MASK = (size, startpos) => (((2<<(size-1))-1) << SHIFT(size,startpos));
+const PUTBITS = (dest, data, size, startpos) => {dest = ((dest & ~MASK(size, startpos)) | ((data << SHIFT(size, startpos)) & MASK(size,startpos)));}; // BUG: dest won't get updated
+const SHIFTHIGH = (size, startpos) => (((startpos)-32)-(size)+1);
+const MASKHIGH = (size, startpos) => (((1<<(size))-1) << SHIFTHIGH(size,startpos));
+const PUTBITSHIGH = (dest, data, size, startpos) => {dest = ((dest & ~MASKHIGH(size, startpos)) | ((data << SHIFTHIGH(size, startpos)) & MASKHIGH(size,startpos)));}; // BUG: dest won't get updated
+const GETBITS = (source, size, startpos) => (( (source) >> ((startpos)-(size)+1) ) & ((1<<(size)) -1));
+const GETBITSHIGH = (source, size, startpos) => (( (source) >> (((startpos)-32)-(size)+1) ) & ((1<<(size)) -1));
+const PGMOUT = true;
 // Thumb macros and definitions
-#define	R_BITS59T 4
-#define G_BITS59T 4
-#define	B_BITS59T 4
-#define	R_BITS58H 4
-#define G_BITS58H 4
-#define	B_BITS58H 4
-#define	MAXIMUM_ERROR (255*255*16*1000)
-#define R 0
-#define G 1
-#define B 2
-#define BLOCKHEIGHT 4
-#define BLOCKWIDTH 4
-#define BINPOW(power) (1<<(power))
-#define	TABLE_BITS_59T 3
-#define	TABLE_BITS_58H 3
+const R_BITS59T = 4;
+const G_BITS59T = 4;
+const B_BITS59T = 4;
+const R_BITS58H = 4;
+const G_BITS58H = 4;
+const B_BITS58H = 4;
+const MAXIMUM_ERROR = (255*255*16*1000);
+const R = 0;
+const G = 1;
+const B = 2;
+const BLOCKHEIGHT = 4;
+const BLOCKWIDTH = 4;
+const BINPOW = (power) => (1<<(power));
+const TABLE_BITS_59T = 3;
+const TABLE_BITS_58H = 3;
 
 // Helper Macros
-#define CLAMP(ll,x,ul) (((x)<(ll)) ? (ll) : (((x)>(ul)) ? (ul) : (x)))
-#define JAS_ROUND(x) (((x) < 0.0 ) ? ((int)((x)-0.5)) : ((int)((x)+0.5)))
+const CLAMP = (ll,x,ul) => (((x)<(ll)) ? (ll) : (((x)>(ul)) ? (ul) : (x)));
+const JAS_ROUND = (x) => (((x) < 0.0 ) ? ((int)((x)-0.5)) : ((int)((x)+0.5)));
 
-#define RED_CHANNEL(img,width,x,y,channels)   img[channels*(y*width+x)+0]
-#define GREEN_CHANNEL(img,width,x,y,channels) img[channels*(y*width+x)+1]
-#define BLUE_CHANNEL(img,width,x,y,channels)  img[channels*(y*width+x)+2]
-#define ALPHA_CHANNEL(img,width,x,y,channels)  img[channels*(y*width+x)+3]
+const RED_CHANNEL = (img,width,x,y,channels) => img[channels*(y*width+x)+0];
+const GREEN_CHANNEL = (img,width,x,y,channels) => img[channels*(y*width+x)+1];
+const BLUE_CHANNEL = (img,width,x,y,channels) => img[channels*(y*width+x)+2];
+const ALPHA_CHANNEL = (img,width,x,y,channels) => img[channels*(y*width+x)+3];
 
 
 // Global tables
-static uint8 table59T[8] = {3,6,11,16,23,32,41,64};  // 3-bit table for the 59 bit T-mode
-static uint8 table58H[8] = {3,6,11,16,23,32,41,64};  // 3-bit table for the 58 bit H-mode
-static int compressParams[16][4] = {{-8, -2,  2, 8}, {-8, -2,  2, 8}, {-17, -5, 5, 17}, {-17, -5, 5, 17}, {-29, -9, 9, 29}, {-29, -9, 9, 29}, {-42, -13, 13, 42}, {-42, -13, 13, 42}, {-60, -18, 18, 60}, {-60, -18, 18, 60}, {-80, -24, 24, 80}, {-80, -24, 24, 80}, {-106, -33, 33, 106}, {-106, -33, 33, 106}, {-183, -47, 47, 183}, {-183, -47, 47, 183}};
-static int unscramble[4] = {2, 3, 1, 0};
-int alphaTableInitialized = 0;
-int alphaTable[256][8];
-int alphaBase[16][4] = {	
-              {-15,-9,-6,-3},
-							{-13,-10,-7,-3},
-							{-13,-8,-5,-2},
-							{-13,-6,-4,-2},
-							{-12,-8,-6,-3},
-							{-11,-9,-7,-3},
-							{-11,-8,-7,-4},
-							{-11,-8,-5,-3},
-							{ -10,-8,-6,-2},
-							{ -10,-8,-5,-2},
-							{ -10,-8,-4,-2},
-							{ -10,-7,-5,-2},
-							{ -10,-7,-4,-3},
-							{ -10,-3,-2, -1},
-							{ -9,-8,-6,-4},
-							{ -9,-7,-5,-3}
-											};
+/*static*/ const table59T = Uint8Array.from([3,6,11,16,23,32,41,64]);  // 3-bit table for the 59 bit T-mode
+/*static*/ const table58H = Uint8Array.from([3,6,11,16,23,32,41,64]);  // 3-bit table for the 58 bit H-mode
+/*static*/ const compressParams = [
+	Int32Array.from([-8, -2,  2, 8]),
+	Int32Array.from([-8, -2,  2, 8]),
+	Int32Array.from([-17, -5, 5, 17]),
+	Int32Array.from([-17, -5, 5, 17]),
+	Int32Array.from([-29, -9, 9, 29]),
+	Int32Array.from([-29, -9, 9, 29]),
+	Int32Array.from([-42, -13, 13, 42]),
+	Int32Array.from([-42, -13, 13, 42]),
+	Int32Array.from([-60, -18, 18, 60]),
+	Int32Array.from([-60, -18, 18, 60]),
+	Int32Array.from([-80, -24, 24, 80]),
+	Int32Array.from([-80, -24, 24, 80]),
+	Int32Array.from([-106, -33, 33, 106]),
+	Int32Array.from([-106, -33, 33, 106]),
+	Int32Array.from([-183, -47, 47, 183]),
+	Int32Array.from([-183, -47, 47, 183])];
+/*static*/ const unscramble = Int32Array.from([2, 3, 1, 0]);
+
+const alphaTableInitialized = false;
+const alphaTable = Array(256).fill(Int32Array.from(Array(8).fill(0)));
+const alphaBase = [
+	Int32Array.from([-15,-9,-6,-3]),
+	Int32Array.from([-13,-10,-7,-3]),
+	Int32Array.from([-13,-8,-5,-2]),
+	Int32Array.from([-13,-6,-4,-2]),
+	Int32Array.from([-12,-8,-6,-3]),
+	Int32Array.from([-11,-9,-7,-3]),
+	Int32Array.from([-11,-8,-7,-4]),
+	Int32Array.from([-11,-8,-5,-3]),
+	Int32Array.from([-10,-8,-6,-2]),
+	Int32Array.from([-10,-8,-5,-2]),
+	Int32Array.from([-10,-8,-4,-2]),
+	Int32Array.from([-10,-7,-5,-2]),
+	Int32Array.from([-10,-7,-4,-3]),
+	Int32Array.from([-10,-3,-2,-1]),
+	Int32Array.from([-9,-8,-6,-4]),
+	Int32Array.from([-9,-7,-5,-3])];
 
 // Global variables
-int formatSigned = 0;
+const formatSigned = false;
 
 // Enums
- enum{PATTERN_H = 0, 
-      PATTERN_T = 1};
+enum Pattern {
+	PATTERN_H = 0, 
+    PATTERN_T = 1
+}
 
 
 // Code used to create the valtab
@@ -479,7 +496,7 @@ void unstuff59bits(unsigned int thumbT_word1, unsigned int thumbT_word2, unsigne
 
 // The color bits are expanded to the full color
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-void decompressColor(int R_B, int G_B, int B_B, uint8 (colors_RGB444)[2][3], uint8 (colors)[2][3]) 
+function decompressColor(R_B: int, G_B: int, B_B: int, uint8 (colors_RGB444)[2][3], uint8 (colors)[2][3]): void
 {
 	// The color should be retrieved as:
 	//
@@ -1772,12 +1789,12 @@ uint16 get16bits11bits(int base, int table, int mul, int index)
 
 // Decompresses a block using one of the GL_COMPRESSED_R11_EAC or GL_COMPRESSED_SIGNED_R11_EAC-formats
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-void decompressBlockAlpha16bitC(uint8* data, uint8* img, int width, int height, int ix, int iy, int channels) 
+function decompressBlockAlpha16bitC(data: uint8*, img: uint8*, width: int, height: int, ix: int, iy: int, channels: int): void
 {
-	int alpha = data[0];
-	int table = data[1];
+	let alpha: int = data[0];
+	let table: int = data[1];
 
-	if(formatSigned) 
+	if (formatSigned) 
 	{
 		//if we have a signed format, the base value is given as a signed byte. We convert it to (0-255) here,
 		//so more code can be shared with the unsigned mode.
@@ -1785,16 +1802,16 @@ void decompressBlockAlpha16bitC(uint8* data, uint8* img, int width, int height, 
 		alpha = alpha+128;
 	}
 
-	int bit=0;
-	int byte=2;
+	let bit: int = 0;
+	let byte: int = 2;
 	//extract an alpha value for each pixel.
-	for(int x=0; x<4; x++) 
+	for(let x:int=0; x<4; x++)
 	{
-		for(int y=0; y<4; y++) 
+		for(let y:int=0; y<4; y++)
 		{
 			//Extract table index
-			int index=0;
-			for(int bitpos=0; bitpos<3; bitpos++) 
+			let index: int = 0;
+			for(let bitpos:int=0; bitpos<3; bitpos++)
 			{
 				index|=getbit(data[byte],7-bit,2-bitpos);
 				bit++;
@@ -1804,9 +1821,9 @@ void decompressBlockAlpha16bitC(uint8* data, uint8* img, int width, int height, 
 					byte++;
 				}
 			}
-			int windex = channels*(2*(ix+x+(iy+y)*width));
-#if !PGMOUT
-			if(formatSigned)
+			const windex: int = channels*(2*(ix+x+(iy+y)*width));
+if (PGMOUT) {
+			if (formatSigned)
 			{
 				*(int16 *)&img[windex] = get16bits11signed(alpha,(table%16),(table/16),index);
 			}
@@ -1814,9 +1831,9 @@ void decompressBlockAlpha16bitC(uint8* data, uint8* img, int width, int height, 
 			{
 				*(uint16 *)&img[windex] = get16bits11bits(alpha,(table%16),(table/16),index);
 			}
-#else
+} else {
 			//make data compatible with the .pgm format. See the comment in compressBlockAlpha16() for details.
-			uint16 uSixteen;
+			let uSixteen: uint16;
 			if (formatSigned)
 			{
 				//the pgm-format only allows unsigned images,
@@ -1830,13 +1847,12 @@ void decompressBlockAlpha16bitC(uint8* data, uint8* img, int width, int height, 
 			//byte swap for pgm
 			img[windex] = uSixteen/256;
 			img[windex+1] = uSixteen%256;
-#endif
-
+}
 		}
 	}			
 }
 
-void decompressBlockAlpha16bit(uint8* data, uint8* img, int width, int height, int ix, int iy)
+function decompressBlockAlpha16bit(data: uint8*, img: uint8*, width: int, height: int, ix: int, iy: int): void
 {
   decompressBlockAlpha16bitC(data, img, width, height, ix, iy, 1);
 }
