@@ -1,21 +1,25 @@
 {
   "name": "vscode-pvr-viewer",
-  "displayName": "vscode-pvr-viewer",
-  "description": "",
-  "version": "0.0.1",
+  "displayName": "PVR Viewer for VSCode",
+  "description": "Image preview for PVR textures",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.84.0"
   },
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
-    "commands": [
+    "customEditors": [
       {
-        "command": "vscode-pvr-viewer.helloWorld",
-        "title": "Hello World"
+        "viewType": "pvr-viewer",
+        "displayName": "Image Preview",
+        "selector": [
+          {
+            "filenamePattern": "*.pvr"
+          }
+        ]
       }
     ]
   },
