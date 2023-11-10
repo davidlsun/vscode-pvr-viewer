@@ -21,6 +21,13 @@
           }
         ]
       }
+    ],
+    "iconThemes": [
+      {
+        "id": "pvr-viewer",
+        "label": "PVR Viewer",
+        "path": "./icons/pvr-viewer-icon-theme.json"
+      }
     ]
   },
   "scripts": {

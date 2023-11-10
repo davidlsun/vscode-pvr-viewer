@@ -1,68 +1,69 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 
-function generateHTMLCanvas(imageData: string): string {
+function generateHtmlContent(imageData: string): string {
     return `<!DOCTYPE html>
-        <html lang="en">
-        <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body>
-        <div id="canvas-container" style="overflow: auto">
-            <canvas id="canvas-area" style="padding: 0; margin: auto; display: block;"></canvas>
-        </div>
-        <script>
-            var scale = 1;
-            const jsonStr = '${imageData}';
-            var message = JSON.parse(jsonStr);
-            const canvas = document.getElementById('canvas-area');
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+<img src="https://media.giphy.com/media/JIX9t2j0ZTN9S/giphy.gif" width="300" />
+<div id="canvas-container" style="overflow: auto">
+    <canvas id="canvas-area" style="padding: 0; margin: auto; display: block"></canvas>
+</div>
+<script>
+    let scale = 1;
+    const jsonStr = '${imageData}';
+    var message = JSON.parse(jsonStr);
+    const canvas = document.getElementById('canvas-area');
 
-            function scaleCanvas(targetCanvas, scale) {
-                const { pixels, width, height } = message;
+    function scaleCanvas(targetCanvas, scale) {
+        const { pixels, width, height } = message;
 
-                // Write the pixels to an ImageData object
-                const data = new Uint8ClampedArray(width * height * 4);
-                for (let row = 0; row < height; row++) {
-                    for (let col = 0; col < width; col++) {
-                        let color = pixels[row * width + col];
-                        let i = row * 4 * width + col * 4;
-                        data[i + 0] = color.r;
-                        data[i + 1] = color.g;
-                        data[i + 2] = color.b;
-                        data[i + 3] = 255;
-                    }
-                }
-                const id = new ImageData(data, width, height);
-
-                // Write the ImageData to a background canvas
-                const backCanvas = document.createElement('canvas');
-                backCanvas.width = id.width;
-                backCanvas.height = id.height;
-                backCanvas.getContext('2d').putImageData(id, 0, 0);
-
-                // Scale the target canvas and write the background canvas to it
-                const ctx = targetCanvas.getContext('2d');
-                targetCanvas.width = width * scale;
-                targetCanvas.height = height * scale;
-                ctx.scale(scale, scale);
-                ctx.imageSmoothingEnabled = false;
-                ctx.drawImage(backCanvas, 0, 0);
+        // Write the pixels to an ImageData object
+        const data = new Uint8ClampedArray(width * height * 4);
+        for (let row = 0; row < height; row++) {
+            for (let col = 0; col < width; col++) {
+                let color = pixels[row * width + col];
+                let i = row * 4 * width + col * 4;
+                data[i + 0] = color.r;
+                data[i + 1] = color.g;
+                data[i + 2] = color.b;
+                data[i + 3] = 255;
             }
+        }
+        const id = new ImageData(data, width, height);
 
-            function showImg(scale) {
-                const { pixels, width, height } = message;
-                scaleCanvas(canvas, scale);
-            }
-            showImg(scale);
+        // Write the ImageData to a background canvas
+        const backCanvas = document.createElement('canvas');
+        backCanvas.width = id.width;
+        backCanvas.height = id.height;
+        backCanvas.getContext('2d').putImageData(id, 0, 0);
 
-            window.addEventListener('message', event => {
-                message = event.data;
-                showImg(scale);
-            });
-        </script>
-        </body>
-        </html>`;
+        // Scale the target canvas and write the background canvas to it
+        const ctx = targetCanvas.getContext('2d');
+        targetCanvas.width = width * scale;
+        targetCanvas.height = height * scale;
+        ctx.scale(scale, scale);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(backCanvas, 0, 0);
+    }
+
+    function showImg(scale) {
+        const { pixels, width, height } = message;
+        scaleCanvas(canvas, scale);
+    }
+    showImg(scale);
+
+    window.addEventListener('message', event => {
+        message = event.data;
+        showImg(scale);
+    });
+</script>
+</body>
+</html>`;
 }
 
 function parseByteFormat(byteData: Uint8Array) {
@@ -129,7 +130,7 @@ export class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider
     async resolveCustomEditor(document: ImagePreviewDocument, webviewPanel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
         // setup initial content for the webview
         webviewPanel.webview.options = { enableScripts: true };
-        webviewPanel.webview.html = generateHTMLCanvas(document.imageData);
+        webviewPanel.webview.html = generateHtmlContent(document.imageData);
 
         const watcherAction = async (e: vscode.Uri) => {
             const docUriPath = document.uri.path.replace(/(\/[A-Z]:\/)/, (match) => match.toLowerCase());
