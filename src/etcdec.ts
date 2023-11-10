@@ -171,8 +171,14 @@ submitted to the exclusive jurisdiction of the Swedish Courts.
 // Typedefs
 type int = number;
 type uint8 = number;
-type uint16 = number;
 type int16 = number;
+type uint16 = number;
+type uint32 = number;
+type uint8_ptr = uint8*;
+type uint16_ptr = uint16*;
+type uint32_ptr = uint32*;
+type uint32_ref = uint32&;
+type FILE_ptr = FILE*;
 
 // Macros to help with bit extraction/insertion
 const SHIFT = (size, startpos) => ((startpos)-(size)+1);
@@ -230,28 +236,30 @@ const ALPHA_CHANNEL = (img,width,x,y,channels) => img[channels*(y*width+x)+3];
 	Int32Array.from([-106, -33, 33, 106]),
 	Int32Array.from([-106, -33, 33, 106]),
 	Int32Array.from([-183, -47, 47, 183]),
-	Int32Array.from([-183, -47, 47, 183])];
+	Int32Array.from([-183, -47, 47, 183])
+];
 /*static*/ const unscramble = Int32Array.from([2, 3, 1, 0]);
 
-const alphaTableInitialized = false;
-const alphaTable = Array(256).fill(Int32Array.from(Array(8).fill(0)));
+let alphaTableInitialized = false;
+let alphaTable: Int32Array[] = Array(256).fill(Int32Array.from(Array(8).fill(0)));
 const alphaBase = [
-	Int32Array.from([-15,-9,-6,-3]),
-	Int32Array.from([-13,-10,-7,-3]),
-	Int32Array.from([-13,-8,-5,-2]),
-	Int32Array.from([-13,-6,-4,-2]),
-	Int32Array.from([-12,-8,-6,-3]),
-	Int32Array.from([-11,-9,-7,-3]),
-	Int32Array.from([-11,-8,-7,-4]),
-	Int32Array.from([-11,-8,-5,-3]),
-	Int32Array.from([-10,-8,-6,-2]),
-	Int32Array.from([-10,-8,-5,-2]),
-	Int32Array.from([-10,-8,-4,-2]),
-	Int32Array.from([-10,-7,-5,-2]),
-	Int32Array.from([-10,-7,-4,-3]),
-	Int32Array.from([-10,-3,-2,-1]),
-	Int32Array.from([-9,-8,-6,-4]),
-	Int32Array.from([-9,-7,-5,-3])];
+	Int32Array.from([-15, -9, -6, -3]),
+	Int32Array.from([-13, -10, -7, -3]),
+	Int32Array.from([-13, -8, -5, -2]),
+	Int32Array.from([-13, -6, -4, -2]),
+	Int32Array.from([-12, -8, -6, -3]),
+	Int32Array.from([-11, -9, -7, -3]),
+	Int32Array.from([-11, -8, -7, -4]),
+	Int32Array.from([-11, -8, -5, -3]),
+	Int32Array.from([-10, -8, -6, -2]),
+	Int32Array.from([-10, -8, -5, -2]),
+	Int32Array.from([-10, -8, -4, -2]),
+	Int32Array.from([-10, -7, -5, -2]),
+	Int32Array.from([-10, -7, -4, -3]),
+	Int32Array.from([-10, -3, -2, -1]),
+	Int32Array.from([-9, -8, -6, -4]),
+	Int32Array.from([-9, -7, -5, -3])
+];
 
 // Global variables
 const formatSigned = false;
@@ -265,17 +273,17 @@ enum Pattern {
 
 // Code used to create the valtab
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-void setupAlphaTable() 
+function setupAlphaTable(): void
 {
-  if(alphaTableInitialized)
-    return;
-  alphaTableInitialized = 1;
+  	if(alphaTableInitialized)
+		return;
+  	alphaTableInitialized = true;
 
 	//read table used for alpha compression
-	int buf;
-	for(int i = 16; i<32; i++) 
+	let buf: int;
+	for(let i:int = 16; i<32; i++) 
 	{
-		for(int j=0; j<8; j++) 
+		for(let j:int=0; j<8; j++) 
 		{
 			buf=alphaBase[i-16][3-j%4];
 			if(j<4)
@@ -286,12 +294,12 @@ void setupAlphaTable()
 	}
 	
 	//beyond the first 16 values, the rest of the table is implicit.. so calculate that!
-	for(int i=0; i<256; i++) 
+	for(let i:int=0; i<256; i++) 
 	{
 		//fill remaining slots in table with multiples of the first ones.
-		int mul = i/16;
-		int old = 16+i%16;
-		for(int j = 0; j<8; j++) 
+		const mul: int = i/16;
+		const old: int = 16+i%16;
+		for(let j: int = 0; j<8; j++) 
 		{
 			alphaTable[i][j]=alphaTable[old][j]*mul;
 			//note: we don't do clamping here, though we could, because we'll be clamped afterwards anyway.
@@ -301,10 +309,10 @@ void setupAlphaTable()
 
 // Read a word in big endian style
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-void read_big_endian_2byte_word(unsigned short *blockadr, FILE *f)
+function read_big_endian_2byte_word(blockadr: uint16_ptr, f: FILE_ptr): void
 {
-	uint8 bytes[2];
-	unsigned short block;
+	let bytes: uint8[2];
+	let block: uint16;
 
 	fread(&bytes[0], 1, 1, f);
 	fread(&bytes[1], 1, 1, f);
@@ -319,10 +327,10 @@ void read_big_endian_2byte_word(unsigned short *blockadr, FILE *f)
 
 // Read a word in big endian style
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-void read_big_endian_4byte_word(unsigned int *blockadr, FILE *f)
+function read_big_endian_4byte_word(blockadr: uint32_ptr, f: FILE_ptr): void
 {
-	uint8 bytes[4];
-	unsigned int block;
+	let bytes: uint8[4];
+	let block: uint32;
 
 	fread(&bytes[0], 1, 1, f);
 	fread(&bytes[1], 1, 1, f);
@@ -345,7 +353,7 @@ void read_big_endian_4byte_word(unsigned int *blockadr, FILE *f)
 // fit them without increasing the bit rate. This function converts them into something
 // that is easier to work with. 
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-void unstuff57bits(unsigned int planar_word1, unsigned int planar_word2, unsigned int &planar57_word1, unsigned int &planar57_word2)
+function unstuff57bits(planar_word1: uint32, planar_word2: uint32, planar57_word1: uint32_ref, planar57_word2: uint32_ref): void
 {
 	// Get bits from twotimer configuration for 57 bits
 	// 
@@ -379,7 +387,19 @@ void unstuff57bits(unsigned int planar_word1, unsigned int planar_word2, unsigne
 	//     | R1' (5 bits) | dR2    | G1' (5 bits) | dG2    | B1' (5 bits) | dB2    | cw 1   | cw 2   |bit |bit |
 	//      ---------------------------------------------------------------------------------------------------
 
-	uint8 RO, GO1, GO2, BO1, BO2, BO3, RH1, RH2, GH, BH, RV, GV, BV;
+	let RO: uint8;
+	let GO1: uint8;
+	let GO2: uint8;
+	let BO1: uint8;
+	let BO2: uint8;
+	let BO3: uint8;
+	let RH1: uint8;
+	let RH2: uint8;
+	let GH: uint8;
+	let BH: uint8;
+	let RV: uint8;
+	let GV: uint8;
+	let BV: uint8;
 
 	RO  = GETBITSHIGH( planar_word1, 6, 62);
 	GO1 = GETBITSHIGH( planar_word1, 1, 56);
@@ -415,7 +435,7 @@ void unstuff57bits(unsigned int planar_word1, unsigned int planar_word2, unsigne
 // fit them without increasing the bit rate. This function converts them into something
 // that is easier to work with. 
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-void unstuff58bits(unsigned int thumbH_word1, unsigned int thumbH_word2, unsigned int &thumbH58_word1, unsigned int &thumbH58_word2)
+function unstuff58bits(thumbH_word1: uint32, thumbH_word2: uint32, thumbH58_word1: uint32_ref, thumbH58_word2: uint32_ref): void
 {
 	// Go to this layout:
 	//
@@ -429,7 +449,10 @@ void unstuff58bits(unsigned int thumbH_word1, unsigned int thumbH_word2, unsigne
 	//     |//|part0               |// // //|part1|//|part2                                          |df|part3|
 	//      --------------------------------------------------------------------------------------------------|
 
-	unsigned int part0, part1, part2, part3;
+	let part0: uint32;
+	let part1: uint32;
+	let part2: uint32;
+	let part3: uint32;
 
 	// move parts
 	part0 = GETBITSHIGH( thumbH_word1, 7, 62);
@@ -449,7 +472,7 @@ void unstuff58bits(unsigned int thumbH_word1, unsigned int thumbH_word2, unsigne
 // fit them without increasing the bit rate. This function converts them into something
 // that is easier to work with. 
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-void unstuff59bits(unsigned int thumbT_word1, unsigned int thumbT_word2, unsigned int &thumbT59_word1, unsigned int &thumbT59_word2)
+function unstuff59bits(thumbT_word1: uint32, thumbT_word2: uint32, thumbT59_word1: uint32_ref, thumbT59_word2: uint32_ref): void
 {
 	// Get bits from twotimer configuration 59 bits. 
 	// 
@@ -478,7 +501,7 @@ void unstuff59bits(unsigned int thumbT_word1, unsigned int thumbT_word2, unsigne
 	//     | R1' (5 bits) | dR2    | G1' (5 bits) | dG2    | B1' (5 bits) | dB2    | cw 1   | cw 2   |bt|bt|
 	//      ------------------------------------------------------------------------------------------------
 
-	uint8 R0a;
+	let R0a: uint8;
 
 	// Fix middle part
 	thumbT59_word1 = thumbT_word1 >> 1;
@@ -496,7 +519,7 @@ void unstuff59bits(unsigned int thumbT_word1, unsigned int thumbT_word2, unsigne
 
 // The color bits are expanded to the full color
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressColor(R_B: int, G_B: int, B_B: int, uint8 (colors_RGB444)[2][3], uint8 (colors)[2][3]): void
+function decompressColor(R_B: int, G_B: int, B_B: int, colors_RGB444: uint8[2][3], colors: uint8[2][3]): void
 {
 	// The color should be retrieved as:
 	//
@@ -515,7 +538,7 @@ function decompressColor(R_B: int, G_B: int, B_B: int, uint8 (colors_RGB444)[2][
  	colors[1][B] = (colors_RGB444[1][B] << (8 - B_B)) | (colors_RGB444[1][B] >> (B_B - (8-B_B)) );
 }
 
-void calculatePaintColors59T(uint8 d, uint8 p, uint8 (colors)[2][3], uint8 (possible_colors)[4][3]) 
+function calculatePaintColors59T(d: uint8, p: Pattern, colors: uint8[2][3], possible_colors: uint8[4][3]): void
 {
 	//////////////////////////////////////////////
 	//
@@ -534,7 +557,7 @@ void calculatePaintColors59T(uint8 d, uint8 p, uint8 (colors)[2][3], uint8 (poss
 	possible_colors[3][G] = CLAMP(0,colors[1][G] - table59T[d],255);
 	possible_colors[3][B] = CLAMP(0,colors[1][B] - table59T[d],255);
 	
-	if (p == PATTERN_T) 
+	if (p == Pattern.PATTERN_T) 
 	{
 		// C3
 		possible_colors[0][R] = colors[0][R];
@@ -564,13 +587,13 @@ void calculatePaintColors59T(uint8 d, uint8 p, uint8 (colors)[2][3], uint8 (poss
 //|31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00|
 //|----------------------------------------index bits---------------------------------------------|
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-void decompressBlockTHUMB59Tc(unsigned int block_part1, unsigned int block_part2, uint8 *img,int width,int height,int startx,int starty, int channels)
+function decompressBlockTHUMB59Tc(block_part1: uint32, block_part2: uint32, img: uint8_ptr, width: int, height: int, startx: int, starty: int, channels: int): void
 {
-	uint8 colorsRGB444[2][3];
-	uint8 colors[2][3];
-	uint8 paint_colors[4][3];
-	uint8 distance;
-	uint8 block_mask[4][4];
+	let colorsRGB444: uint8[2][3];
+	let colors: uint8[2][3];
+	let paint_colors: uint8[4][3];
+	let distance: uint8;
+	let block_mask: uint8[4][4];
 
 	// First decode left part of block.
 	colorsRGB444[0][R]= GETBITSHIGH(block_part1, 4, 58);
@@ -585,7 +608,7 @@ void decompressBlockTHUMB59Tc(unsigned int block_part1, unsigned int block_part2
 
 	// Extend the two colors to RGB888	
 	decompressColor(R_BITS59T, G_BITS59T, B_BITS59T, colorsRGB444, colors);	
-	calculatePaintColors59T(distance, PATTERN_T, colors, paint_colors);
+	calculatePaintColors59T(distance, Pattern.PATTERN_T, colors, paint_colors);
 	
 	// Choose one of the four paint colors for each texel
 	for (uint8 x = 0; x < BLOCKWIDTH; ++x) 
@@ -1497,13 +1520,15 @@ void decompressBlockTHUMB58HAlpha(unsigned int block_part1, unsigned int block_p
 }
 // Decompression function for ETC2_RGBA1 format.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-void decompressBlockETC21BitAlphaC(unsigned int block_part1, unsigned int block_part2, uint8 *img, uint8* alphaimg, int width, int height, int startx, int starty, int channelsRGB)
+function decompressBlockETC21BitAlphaC(block_part1: uint32, block_part2: uint32, img: uint8_ptr, alphaimg: uint8_ptr, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
 {
-	int diffbit;
-	signed char color1[3];
-	signed char diff[3];
-	signed char red, green, blue;
-  int channelsA;	
+	let diffbit: int;
+	let color1: int8[3];
+	let diff: int8[3];
+	let red: int8;
+	let green: int8;
+	let blue: int8;
+  let channelsA: int;
 
   if(channelsRGB == 3)
   {
@@ -1548,20 +1573,22 @@ void decompressBlockETC21BitAlphaC(unsigned int block_part1, unsigned int block_
 
 		if(red < 0 || red > 31)
 		{
-			unsigned int block59_part1, block59_part2;
+			let block59_part1: uint32;
+			let block59_part2: uint32;
 			unstuff59bits(block_part1, block_part2, block59_part1, block59_part2);
 			decompressBlockTHUMB59Tc(block59_part1, block59_part2, img, width, height, startx, starty, channelsRGB);
 		}
 		else if (green < 0 || green > 31)
 		{
-			unsigned int block58_part1, block58_part2;
+			let block58_part1: uint32;
+			let block58_part2: uint32;
 			unstuff58bits(block_part1, block_part2, block58_part1, block58_part2);
 			decompressBlockTHUMB58Hc(block58_part1, block58_part2, img, width, height, startx, starty, channelsRGB);
 		}
 		else if(blue < 0 || blue > 31)
 		{
-			unsigned int block57_part1, block57_part2;
-
+			let block57_part1: uint32;
+			let block57_part2: uint32;
 			unstuff57bits(block_part1, block_part2, block57_part1, block57_part2);
 			decompressBlockPlanar57c(block57_part1, block57_part2, img, width, height, startx, starty, channelsRGB);
 		}
@@ -1569,9 +1596,9 @@ void decompressBlockETC21BitAlphaC(unsigned int block_part1, unsigned int block_
 		{
  			decompressBlockDifferentialWithAlphaC(block_part1, block_part2, img, alphaimg, width, height, startx, starty, channelsRGB);
 		}
-		for(int x=startx; x<startx+4; x++) 
+		for(let x:int=startx; x<startx+4; x++) 
 		{
-			for(int y=starty; y<starty+4; y++) 
+			for(let y:int=starty; y<starty+4; y++) 
 			{
 				alphaimg[channelsA*(x+y*width)]=255;
 			}
@@ -1604,25 +1631,27 @@ void decompressBlockETC21BitAlphaC(unsigned int block_part1, unsigned int block_
 		blue  = color1[2] + diff[2];
 		if(red < 0 || red > 31)
 		{
-			unsigned int block59_part1, block59_part2;
+			let block59_part1: uint32;
+			let block59_part2: uint32;
 			unstuff59bits(block_part1, block_part2, block59_part1, block59_part2);
 			decompressBlockTHUMB59TAlphaC(block59_part1, block59_part2, img, alphaimg, width, height, startx, starty, channelsRGB);
 		}
 		else if(green < 0 || green > 31) 
 		{
-			unsigned int block58_part1, block58_part2;
+			let block58_part1: uint32;
+			let block58_part2: uint32;
 			unstuff58bits(block_part1, block_part2, block58_part1, block58_part2);
 			decompressBlockTHUMB58HAlphaC(block58_part1, block58_part2, img, alphaimg, width, height, startx, starty, channelsRGB);
 		}
 		else if(blue < 0 || blue > 31)
 		{
-			unsigned int block57_part1, block57_part2;
-
+			let block57_part1: uint32;
+			let block57_part2: uint32;
 			unstuff57bits(block_part1, block_part2, block57_part1, block57_part2);
 			decompressBlockPlanar57c(block57_part1, block57_part2, img, width, height, startx, starty, channelsRGB);
-			for(int x=startx; x<startx+4; x++) 
+			for(let x:int=startx; x<startx+4; x++) 
 			{
-				for(int y=starty; y<starty+4; y++) 
+				for(let y:int=starty; y<starty+4; y++) 
 				{
 					alphaimg[channelsA*(x+y*width)]=255;
 				}
@@ -1632,7 +1661,7 @@ void decompressBlockETC21BitAlphaC(unsigned int block_part1, unsigned int block_
 			decompressBlockDifferentialWithAlphaC(block_part1, block_part2, img,alphaimg, width, height, startx, starty, channelsRGB);
 	}
 }
-void decompressBlockETC21BitAlpha(unsigned int block_part1, unsigned int block_part2, uint8 *img, uint8* alphaimg, int width, int height, int startx, int starty)
+function decompressBlockETC21BitAlpha(block_part1: uint32, block_part2: uint32, img: uint8_ptr, alphaimg: uint8_ptr, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockETC21BitAlphaC(block_part1, block_part2, img, alphaimg, width, height, startx, starty, 3);
 }
@@ -1642,9 +1671,9 @@ void decompressBlockETC21BitAlpha(unsigned int block_part1, unsigned int block_p
 
 // bit number frompos is extracted from input, and moved to bit number topos in the return value.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-uint8 getbit(uint8 input, int frompos, int topos) 
+function getbit(input: uint8, frompos: int, topos: int): uint8
 {
-	uint8 output=0;
+	let output: uint8 = 0;
 	if(frompos>topos)
 		return ((1<<frompos)&input)>>(frompos-topos);
 	return ((1<<frompos)&input)<<(topos-frompos);
@@ -1652,7 +1681,7 @@ uint8 getbit(uint8 input, int frompos, int topos)
 
 // takes as input a value, returns the value clamped to the interval [0,255].
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-int clamp(int val) 
+function clamp(val: int): int
 {
 	if(val<0)
 		val=0;
@@ -1666,21 +1695,21 @@ int clamp(int val)
 // However, a hardware decoder can share gates between the two formats as explained
 // in the specification under GL_COMPRESSED_R11_EAC.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-void decompressBlockAlphaC(uint8* data, uint8* img, int width, int height, int ix, int iy, int channels) 
+function decompressBlockAlphaC(data: uint8_ptr, img: uint8_ptr, width: int, height: int, ix: int, iy: int, channels: int): void
 {
-	int alpha = data[0];
-	int table = data[1];
+	const alpha: int = data[0];
+	const table: int = data[1];
 	
-	int bit=0;
-	int byte=2;
+	let bit:int=0;
+	let byte:int=2;
 	//extract an alpha value for each pixel.
-	for(int x=0; x<4; x++) 
+	for(let x:int=0; x<4; x++) 
 	{
-		for(int y=0; y<4; y++) 
+		for(let y:int=0; y<4; y++) 
 		{
 			//Extract table index
-			int index=0;
-			for(int bitpos=0; bitpos<3; bitpos++) 
+			let index:int=0;
+			for(let bitpos:int=0; bitpos<3; bitpos++) 
 			{
 				index|=getbit(data[byte],7-bit,2-bitpos);
 				bit++;
@@ -1694,7 +1723,7 @@ void decompressBlockAlphaC(uint8* data, uint8* img, int width, int height, int i
 		}
 	}
 }
-void decompressBlockAlpha(uint8* data, uint8* img, int width, int height, int ix, int iy) 
+function decompressBlockAlpha(data: uint8_ptr, img: uint8_ptr, width: int, height: int, ix: int, iy: int): void
 {
   decompressBlockAlphaC(data, img, width, height, ix, iy, 1);
 }
@@ -1702,20 +1731,20 @@ void decompressBlockAlpha(uint8* data, uint8* img, int width, int height, int ix
 // Does decompression and then immediately converts from 11 bit signed to a 16-bit format.
 // 
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-int16 get16bits11signed(int base, int table, int mul, int index) 
+function get16bits11signed(base: int, table: int, mul: int, index: int): int16
 {
-	int elevenbase = base-128;
+	let elevenbase: int = base-128;
 	if(elevenbase==-128)
 		elevenbase=-127;
 	elevenbase*=8;
 	//i want the positive value here
-	int tabVal = -alphaBase[table][3-index%4]-1;
+	let tabVal: int = -alphaBase[table][3-index%4]-1;
 	//and the sign, please
-	int sign = 1-(index/4);
+	let sign: int = 1-(index/4);
 	
 	if(sign)
 		tabVal=tabVal+1;
-	int elevenTabVal = tabVal*8;
+	let elevenTabVal: int = tabVal*8;
 
 	if(mul!=0)
 		elevenTabVal*=mul;
@@ -1726,7 +1755,7 @@ int16 get16bits11signed(int base, int table, int mul, int index)
 		elevenTabVal=-elevenTabVal;
 
 	//calculate sum
-	int elevenbits = elevenbase+elevenTabVal;
+	let elevenbits: int = elevenbase+elevenTabVal;
 
 	//clamp..
 	if(elevenbits>=1024)
@@ -1738,8 +1767,8 @@ int16 get16bits11signed(int base, int table, int mul, int index)
 	//so we extend to 15 bits signed.
 	sign = elevenbits<0;
 	elevenbits=abs(elevenbits);
-	int16 fifteenbits = (elevenbits<<5)+(elevenbits>>5);
-	int16 sixteenbits=fifteenbits;
+	let fifteenbits: int16 = (elevenbits<<5)+(elevenbits>>5);
+	let sixteenbits: int16 = fifteenbits;
 
 	if(sign)
 		sixteenbits=-sixteenbits;
@@ -1750,18 +1779,18 @@ int16 get16bits11signed(int base, int table, int mul, int index)
 // Does decompression and then immediately converts from 11 bit signed to a 16-bit format 
 // Calculates the 11 bit value represented by base, table, mul and index, and extends it to 16 bits.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-uint16 get16bits11bits(int base, int table, int mul, int index) 
+function get16bits11bits(base: int, table: int, mul: int, index: int): uint16
 {
-	int elevenbase = base*8+4;
+	const elevenbase: int = base*8+4;
 
 	//i want the positive value here
-	int tabVal = -alphaBase[table][3-index%4]-1;
+	let tabVal:int = -alphaBase[table][3-index%4]-1;
 	//and the sign, please
-	int sign = 1-(index/4);
+	const sign: int = 1-(index/4);
 	
 	if(sign)
 		tabVal=tabVal+1;
-	int elevenTabVal = tabVal*8;
+	let elevenTabVal: int = tabVal*8;
 
 	if(mul!=0)
 		elevenTabVal*=mul;
@@ -1772,7 +1801,7 @@ uint16 get16bits11bits(int base, int table, int mul, int index)
 		elevenTabVal=-elevenTabVal;
 
 	//calculate sum
-	int elevenbits = elevenbase+elevenTabVal;
+	let elevenbits:int = elevenbase+elevenTabVal;
 
 	//clamp..
 	if(elevenbits>=256*8)
@@ -1782,14 +1811,14 @@ uint16 get16bits11bits(int base, int table, int mul, int index)
 	//elevenbits now contains the 11 bit alpha value as defined in the spec.
 
 	//extend to 16 bits before returning, since we don't have any good 11-bit file formats.
-	uint16 sixteenbits = (elevenbits<<5)+(elevenbits>>6);
+	const sixteenbits: uint16 = (elevenbits<<5)+(elevenbits>>6);
 
 	return sixteenbits;
 }
 
 // Decompresses a block using one of the GL_COMPRESSED_R11_EAC or GL_COMPRESSED_SIGNED_R11_EAC-formats
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockAlpha16bitC(data: uint8*, img: uint8*, width: int, height: int, ix: int, iy: int, channels: int): void
+function decompressBlockAlpha16bitC(data: uint8_ptr, img: uint8_ptr, width: int, height: int, ix: int, iy: int, channels: int): void
 {
 	let alpha: int = data[0];
 	let table: int = data[1];
@@ -1852,7 +1881,7 @@ if (PGMOUT) {
 	}			
 }
 
-function decompressBlockAlpha16bit(data: uint8*, img: uint8*, width: int, height: int, ix: int, iy: int): void
+function decompressBlockAlpha16bit(data: uint8_ptr, img: uint8_ptr, width: int, height: int, ix: int, iy: int): void
 {
   decompressBlockAlpha16bitC(data, img, width, height, ix, iy, 1);
 }
