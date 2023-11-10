@@ -1,8 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 
-function parseByteFormat(byteData: Uint8Array) {
-    return { pixels: true, width: 256, height: 128 };
+function parsePVRFile(data: Uint8Array) {
+    return {
+        data: "",
+        width: 256,
+        height: 256
+    };
 }
 
 class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDocument {
@@ -10,12 +14,8 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
     private readonly _uri: vscode.Uri;
     private _data: Uint8Array;
 
-    private static async readFile(uri: vscode.Uri): Promise<Uint8Array> {
-        return vscode.workspace.fs.readFile(uri);
-    }
-
-    static async create(uri: vscode.Uri): Promise<ImagePreviewDocument | PromiseLike<ImagePreviewDocument>> {
-        const data = await ImagePreviewDocument.readFile(uri);
+    public static async create(uri: vscode.Uri): Promise<ImagePreviewDocument | PromiseLike<ImagePreviewDocument>> {
+        const data = await vscode.workspace.fs.readFile(uri);
         return new ImagePreviewDocument(uri, data);
     }
 
@@ -29,13 +29,13 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
         return this._uri;
     }
 
-    public get imageData(): string {
-        const imageDesc = parseByteFormat(this._data);
-        return JSON.stringify(imageDesc);
+    public dispose(): void {
+        super.dispose();
     }
 
-    dispose() {
-        super.dispose();
+    public serializeToJson(): string {
+        const message = parsePVRFile(this._data);
+        return JSON.stringify(message);
     }
 }
 
@@ -55,30 +55,31 @@ export class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider
             });
     }
 
-    constructor(private readonly _context: vscode.ExtensionContext) { }
+    private constructor(private readonly _context: vscode.ExtensionContext) { }
 
-    async openCustomDocument(uri: vscode.Uri, _openContext: vscode.CustomDocumentOpenContext, _token: vscode.CancellationToken): Promise<ImagePreviewDocument> {
+    public async openCustomDocument(uri: vscode.Uri, _openContext: vscode.CustomDocumentOpenContext, _token: vscode.CancellationToken): Promise<ImagePreviewDocument> {
         const document = await ImagePreviewDocument.create(uri);
         return document;
     }
 
-    async resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
+    public async resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
         // setup initial content for the webview
         panel.webview.options = {
             enableScripts: true,
             localResourceRoots: [this._context.extensionUri]
         };
-        panel.webview.html = this._generateHtmlContent(panel.webview, document.imageData);
+        panel.webview.html = this._getHtmlForWebview(panel.webview, document.serializeToJson());
 
-        // listen for any file changes
+        // reload from disk when pvr file changes externally
         const watcherAction = async (e: vscode.Uri) => {
             const docUriPath = document.uri.path.replace(/(\/[A-Z]:\/)/, (match) => match.toLowerCase());
             if (docUriPath === e.path) {
-                const newDocument = await ImagePreviewDocument.create(vscode.Uri.parse(e.path));
-                panel.webview.postMessage(newDocument.imageData);
+                const newdoc = await ImagePreviewDocument.create(vscode.Uri.parse(e.path));
+                panel.webview.postMessage(newdoc.serializeToJson());
             }
         };
 
+        // listen for any changes to the file
         const absolutePath = document.uri.path;
         const fileName = path.parse(absolutePath).base;
         const dirName = path.parse(absolutePath).dir;
@@ -92,7 +93,7 @@ export class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider
         });
     }
 
-    private _generateHtmlContent(webview: vscode.Webview, imageData: string): string {
+    private _getHtmlForWebview(webview: vscode.Webview, imageData: string): string {
         // convert local path of project files to a uri we can use in the webview
         const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'main.js'));
         const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'reset.css'));
