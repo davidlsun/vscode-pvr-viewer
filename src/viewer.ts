@@ -1,12 +1,33 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
+import sharp from 'sharp';
+import { log } from 'console';
 
-function parsePVRFile(data: Uint8Array) {
-    return {
-        data: "",
-        width: 256,
-        height: 256
-    };
+async function parsePVRFile(fileData: Uint8Array): Promise<Buffer> {
+    const width = 256;
+    const height = 256;
+    const channels = 4;
+
+    const pixels = new Uint8Array(width * height * channels);
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const i = y * width + x;
+            pixels[i * 4 + 0] = x;
+            pixels[i * 4 + 1] = y;
+            pixels[i * 4 + 2] = 0;
+            pixels[i * 4 + 3] = 255;
+        }
+    }
+
+    const raw = sharp(pixels, {
+        raw: {
+            width: width,
+            height: height,
+            channels: channels
+        }
+    });
+
+    return await raw.png().withMetadata().toBuffer();
 }
 
 class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDocument {
@@ -14,7 +35,7 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
     private readonly _uri: vscode.Uri;
     private _data: Uint8Array;
 
-    public static async create(uri: vscode.Uri): Promise<ImagePreviewDocument | PromiseLike<ImagePreviewDocument>> {
+    public static async create(uri: vscode.Uri): Promise<ImagePreviewDocument> {
         const data = await vscode.workspace.fs.readFile(uri);
         return new ImagePreviewDocument(uri, data);
     }
@@ -29,24 +50,20 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
         return this._uri;
     }
 
-    public dispose(): void {
-        super.dispose();
-    }
-
-    public serializeToJson(): string {
-        const message = parsePVRFile(this._data);
-        return JSON.stringify(message);
+    public async toDataUrl(): Promise<string> {
+        const png = await parsePVRFile(this._data);
+        return "data:image/png;base64," + png.toString('base64');
     }
 }
 
-export class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider<ImagePreviewDocument> {
+export default class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider<ImagePreviewDocument> {
 
     private static readonly viewType = 'pvr-viewer';
 
     public static register(context: vscode.ExtensionContext): vscode.Disposable {
         return vscode.window.registerCustomEditorProvider(
             ImagePreviewProvider.viewType,
-            new ImagePreviewProvider(context),
+            new ImagePreviewProvider(context.extensionUri),
             {
                 webviewOptions: {
                     retainContextWhenHidden: false
@@ -55,7 +72,7 @@ export class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider
             });
     }
 
-    private constructor(private readonly _context: vscode.ExtensionContext) { }
+    private constructor(private readonly _extensionUri: vscode.Uri) { }
 
     public async openCustomDocument(uri: vscode.Uri, _openContext: vscode.CustomDocumentOpenContext, _token: vscode.CancellationToken): Promise<ImagePreviewDocument> {
         const document = await ImagePreviewDocument.create(uri);
@@ -63,70 +80,40 @@ export class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider
     }
 
     public async resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
-        // setup initial content for the webview
+        // configure new webview
         panel.webview.options = {
-            enableScripts: true,
-            localResourceRoots: [this._context.extensionUri]
-        };
-        panel.webview.html = this._getHtmlForWebview(panel.webview, document.serializeToJson());
-
-        // reload from disk when pvr file changes externally
-        const watcherAction = async (e: vscode.Uri) => {
-            const docUriPath = document.uri.path.replace(/(\/[A-Z]:\/)/, (match) => match.toLowerCase());
-            if (docUriPath === e.path) {
-                const newdoc = await ImagePreviewDocument.create(vscode.Uri.parse(e.path));
-                panel.webview.postMessage(newdoc.serializeToJson());
-            }
+            enableScripts: false,
+            localResourceRoots: [
+                this._extensionUri
+            ]
         };
 
-        // listen for any changes to the file
-        const absolutePath = document.uri.path;
-        const fileName = path.parse(absolutePath).base;
-        const dirName = path.parse(absolutePath).dir;
-        const fileUri = vscode.Uri.file(dirName);
-        const pattern = new vscode.RelativePattern(fileUri, fileName);
-        const globalWatcher = vscode.workspace.createFileSystemWatcher(pattern);
-        const globalChangeFileSubscription = globalWatcher.onDidChange(watcherAction);
-
-        panel.onDidDispose(() => {
-            globalChangeFileSubscription.dispose();
-        });
+        // set content in webview
+        const dataUrl = await document.toDataUrl();
+        console.log(dataUrl);
+        panel.webview.html = this._generateHtmlForWebview(panel.webview, dataUrl);
     }
 
-    private _getHtmlForWebview(webview: vscode.Webview, imageData: string): string {
+    private _generateHtmlForWebview(webview: vscode.Webview, dataUrl: string): string {
         // convert local path of project files to a uri we can use in the webview
-        const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'main.js'));
-        const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'reset.css'));
-        const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'vscode.css'));
-        const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'main.css'));
-
-        // use a content security policy to only allow loading styles from our extension
-        // directory, and use a nonce to only allow a specific script to be run.
-        const nonce = getNonce();
+        const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
+        const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
+        const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
 
         return `<!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <link href="${styleResetUri}" rel="stylesheet>
-                <link href="${styleVSCodeUri}" rel="stylesheet>
-                <link href="${styleMainUri}" rel="stylesheet>
-            </head>
-            <body>
-                <div id="canvas-container"><canvas id="canvas-area"></canvas></div>
-                <script nonce="${nonce}" src="${scriptUri}"></script>
-            </body>
-            </html>`;
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src ${webview.cspSource};">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="${styleResetUri}" rel="stylesheet>
+    <link href="${styleVSCodeUri}" rel="stylesheet>
+    <link href="${styleMainUri}" rel="stylesheet>
+</head>
+<body>
+    <div id="canvas-container"><canvas id="canvas-area"></canvas></div>
+    <img id="image-preview" src="${dataUrl}">
+</body>
+</html>`;
     }
-}
-
-function getNonce(): string {
-    let text = '';
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (let i = 0; i < 32; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
-    return text;
 }
