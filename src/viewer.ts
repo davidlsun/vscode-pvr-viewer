@@ -1,157 +1,67 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 
-function generateHTMLCanvas(imageData: string, width: number, height: number): string {
-    const styles = {
-        canvas: `padding: 0;
-                 margin: auto;
-                 display: block;`,
-        info: `position: fixed;
-               background-color: #ec5340;
-               padding: 0px 15px;
-               margin: 15px 15px;
-               width: 100px;
-               left: 20px;
-               -webkit-touch-callout: none;
-               -webkit-user-select: none;`,
-        sizingButton: `width: 48%;
-                       background-color: #dd4535;
-                       display: inline-block;
-                       text-align: center;
-                       cursor: pointer;
-                       user-select: none;`,
-        wideButton: `background-color: #dd4535;
-                     text-align: center;
-                     margin-bottom: 15px;
-                     cursor: pointer;
-                     user-select: none;`
-    };
-
+function generateHTMLCanvas(imageData: string): string {
     return `<!DOCTYPE html>
         <html lang="en">
-            <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            </head>
-            <body>
-            <div style="${styles.info}">
-                <p id="width-display">Width: ${width}px</p>
-                <p id="height-display">Height: ${height}px</p>
-                <p id="scale-display">Zoom: 100%</p>
-                <div style="margin-bottom: 5px">
-                <div onclick="scale = scale * 2; showImg(scale);" style="${styles.sizingButton}">+</div>
-                <div onclick="scale = scale / 2; showImg(scale);" style="${styles.sizingButton}">-</div>
-                </div>
-                <div onclick="scale = 1; showImg(scale);" style="${styles.wideButton}">Reset</div>
-            </div>
-            <div id="canvas-container" style="overflow: auto">
-                <canvas width="${width}" height="${height}" id="canvas-area" style="${styles.canvas}"></canvas>
-            </div>
-            <script>
-                let scale = 1;
-                const jsonStr = '${imageData}';
-                let message = JSON.parse(jsonStr);
-                const canvas = document.getElementById('canvas-area');
-                const widthDisplay = document.getElementById('width-display');
-                const heightDisplay = document.getElementById('height-display');
-                const scaleDisplay = document.getElementById('scale-display');
-    
-                function scaleCanvas(targetCanvas, scale) {
-                    const { pixels, width, height } = message;
-    
-                    // Write the pixels to an ImageData object
-                    const data = new Uint8ClampedArray(width * height * 4);
-                    for (let row = 0; row < height; row++) {
-                        for (let col = 0; col < width; col++) {
-                            let color = pixels[row * width + col];
-                            let i = row * 4 * width + col * 4;
-                            data[i + 0] = color.r;
-                            data[i + 1] = color.g;
-                            data[i + 2] = color.b;
-                            data[i + 3] = 255;
-                        }
+        <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body>
+        <div id="canvas-container" style="overflow: auto">
+            <canvas id="canvas-area" style="padding: 0; margin: auto; display: block;"></canvas>
+        </div>
+        <script>
+            var scale = 1;
+            const jsonStr = '${imageData}';
+            var message = JSON.parse(jsonStr);
+            const canvas = document.getElementById('canvas-area');
+
+            function scaleCanvas(targetCanvas, scale) {
+                const { pixels, width, height } = message;
+
+                // Write the pixels to an ImageData object
+                const data = new Uint8ClampedArray(width * height * 4);
+                for (let row = 0; row < height; row++) {
+                    for (let col = 0; col < width; col++) {
+                        let color = pixels[row * width + col];
+                        let i = row * 4 * width + col * 4;
+                        data[i + 0] = color.r;
+                        data[i + 1] = color.g;
+                        data[i + 2] = color.b;
+                        data[i + 3] = 255;
                     }
-                    const id = new ImageData(data, width, height);
-    
-                    // Write the ImageData to a background canvas
-                    const backCanvas = document.createElement('canvas');
-                    backCanvas.width = id.width;
-                    backCanvas.height = id.height;
-                    backCanvas.getContext('2d').putImageData(id, 0, 0);
-    
-                    // Scale the target canvas and write the background canvas to it
-                    const ctx = targetCanvas.getContext('2d');
-                    targetCanvas.width = width * scale;
-                    targetCanvas.height = height * scale;
-                    ctx.scale(scale, scale);
-                    ctx.imageSmoothingEnabled = false;
-                    ctx.drawImage(backCanvas, 0, 0);
                 }
-    
-                function showImg(scale) {
-                    const { width, height } = message;
-                    scaleCanvas(canvas, scale);
-                    widthDisplay.innerHTML = "Width: " + String(width) + "px";
-                    heightDisplay.innerHTML = "Height: " + String(height) + "px";
-                    scaleDisplay.innerHTML = "Zoom: " + String(scale * 100) + "%";
-                }
+                const id = new ImageData(data, width, height);
+
+                // Write the ImageData to a background canvas
+                const backCanvas = document.createElement('canvas');
+                backCanvas.width = id.width;
+                backCanvas.height = id.height;
+                backCanvas.getContext('2d').putImageData(id, 0, 0);
+
+                // Scale the target canvas and write the background canvas to it
+                const ctx = targetCanvas.getContext('2d');
+                targetCanvas.width = width * scale;
+                targetCanvas.height = height * scale;
+                ctx.scale(scale, scale);
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(backCanvas, 0, 0);
+            }
+
+            function showImg(scale) {
+                const { pixels, width, height } = message;
+                scaleCanvas(canvas, scale);
+            }
+            showImg(scale);
+
+            window.addEventListener('message', event => {
+                message = event.data;
                 showImg(scale);
-    
-                function zoom(e) {
-                    e.preventDefault();
-                    if (!e.ctrlKey) return;
-                    if (e.deltaY < 0) {
-                        scale = scale * 2;
-                    } else {
-                        scale = scale / 2;
-                    }
-                    showImg(scale);
-                }
-    
-                window.addEventListener('wheel', zoom);
-    
-                const lastPos = { x: 0, y: 0 };
-                let isDragging = false;
-                const canvasContainer = document.getElementById('canvas-container');
-                const root = document.documentElement;
-    
-                function onMouseDown(e) {
-                    lastPos.x = e.clientX;
-                    lastPos.y = e.clientY;
-                    canvasContainer.style.cursor = 'grabbing';
-                    isDragging = true;
-                };
-    
-                function onMouseMove(e) {
-                    if (isDragging) {
-                        canvasContainer.style.cursor = 'grabbing';
-        
-                        const dx = lastPos.x - e.clientX;
-                        const dy = lastPos.y - e.clientY;
-        
-                        canvasContainer.scrollLeft += dx;
-                        root.scrollTop += dy;
-        
-                        lastPos.x = e.clientX;
-                        lastPos.y = e.clientY;
-                    }
-                };
-    
-                function onMouseUp(e) {
-                    canvasContainer.style.cursor = 'grab';
-                    isDragging = false;
-                };
-    
-                canvasContainer.onmousedown = onMouseDown;
-                canvasContainer.onmousemove = onMouseMove;
-                canvasContainer.onmouseup = onMouseUp;
-    
-                window.addEventListener('message', event => {
-                    message = event.data;
-                    showImg(scale);
-                });
-            </script>
-            </body>
+            });
+        </script>
+        </body>
         </html>`;
 }
 
@@ -162,9 +72,9 @@ function parseByteFormat(byteData: Uint8Array) {
 class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDocument {
 
     private readonly _uri: vscode.Uri;
-    private _documentData: Uint8Array;
+    private _data: Uint8Array;
 
-    private static async readFile(uri: vscode.Uri) {
+    private static async readFile(uri: vscode.Uri): Promise<Uint8Array> {
         return vscode.workspace.fs.readFile(uri);
     }
 
@@ -173,22 +83,18 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
         return new ImagePreviewDocument(uri, data);
     }
 
-    private constructor(uri: vscode.Uri, initialContent: Uint8Array) {
+    private constructor(uri: vscode.Uri, data: Uint8Array) {
         super(() => { });
         this._uri = uri;
-        this._documentData = initialContent;
+        this._data = data;
     }
 
     public get uri(): vscode.Uri {
         return this._uri;
     }
 
-    public get documentData(): Uint8Array {
-        return this._documentData;
-    }
-
     public get imageData(): string {
-        const imageDesc = parseByteFormat(this._documentData);
+        const imageDesc = parseByteFormat(this._data);
         return JSON.stringify(imageDesc);
     }
 
@@ -197,7 +103,7 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
     }
 }
 
-export default class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider<ImagePreviewDocument> {
+export class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider<ImagePreviewDocument> {
 
     private static readonly viewType = 'pvr-viewer';
 
@@ -223,7 +129,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     async resolveCustomEditor(document: ImagePreviewDocument, webviewPanel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
         // setup initial content for the webview
         webviewPanel.webview.options = { enableScripts: true };
-        webviewPanel.webview.html = generateHTMLCanvas(document.imageData, 0, 0);
+        webviewPanel.webview.html = generateHTMLCanvas(document.imageData);
 
         const watcherAction = async (e: vscode.Uri) => {
             const docUriPath = document.uri.path.replace(/(\/[A-Z]:\/)/, (match) => match.toLowerCase());

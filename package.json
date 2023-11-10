@@ -1,7 +1,7 @@
 {
   "name": "vscode-pvr-viewer",
-  "displayName": "PVR Viewer for VSCode",
-  "description": "Image preview for PVR textures",
+  "displayName": "PVR Viewer",
+  "description": "Image preview for PVR texture files",
   "version": "1.0.0",
   "engines": {
     "vscode": "^1.84.0"
