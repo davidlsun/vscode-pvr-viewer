@@ -20,8 +20,8 @@ ul {
 	padding-left: var(--container-paddding);
 }
 
-body > *,
-form > * {
+body>*,
+form>* {
 	margin-block-start: var(--input-margin-vertical);
 	margin-block-end: var(--input-margin-vertical);
 }

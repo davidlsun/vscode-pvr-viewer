@@ -1,38 +1,50 @@
 import * as vscode from 'vscode';
 import sharp from 'sharp';
-import { log } from 'console';
 
-async function parsePVRFile(fileData: Uint8Array): Promise<Buffer> {
-    const width = 256;
-    const height = 256;
-    const channels = 4;
+async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
+    const headerSize = 52;
 
-    const pixels = new Uint8Array(width * height * channels);
+    // read fixed size header block
+    const header = new DataView(data.buffer, data.byteOffset, headerSize);
+    const magic = header.getUint32(0, true); // 55727696, 0x03525650
+    const flags = header.getUint32(4, true); // 0 = no flags, 2 = pre-multiplied alpha
+    const pixelFormat = header.getBigUint64(8, true); // 22n (ETC2 RGB)
+    const colorSpace = header.getUint32(16, true); // 0 = linear rgb, 1 = srgb
+    const channelType = header.getUint32(20, true); // 0 = unsigned byte normalized
+    const height = header.getUint32(24, true); // 512 pixels
+    const width = header.getUint32(28, true); // 512 pixels
+    const depth = header.getUint32(32, true); // 1 pixel
+    const numSurfaces = header.getUint32(36, true); // 1 in array
+    const numFaces = header.getUint32(40, true); // 1 in cubemap
+    const mipMapCount = header.getUint32(44, true); // 1 mip only
+    const metaDataSize = header.getUint32(48, true); // 0 bytes
+
+    // read metadata, 0 or more key-value entries
+    const metadata = new DataView(data.buffer, data.byteOffset + headerSize, metaDataSize);
+
+    // read bulk color data
+    const pbuf = new DataView(data.buffer, data.byteOffset + headerSize + metaDataSize, data.byteLength - headerSize - metaDataSize);
+
+    const channels = (pixelFormat === 22n && channelType === 0) ? 3 : 4;
+
+    const rbuf = new Uint8Array(width * height * channels);
 
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            const i = y * width + x;
-            pixels[i * 4 + 0] = x;
-            pixels[i * 4 + 1] = y;
-            pixels[i * 4 + 2] = 0;
-            pixels[i * 4 + 3] = 255;
+            const i = (y * width + x) * channels;
+            rbuf[i + 0] = x;
+            rbuf[i + 1] = y;
+            rbuf[i + 2] = 0.0;
         }
     }
 
-    const raw = sharp(pixels, {
-        raw: {
-            width: width,
-            height: height,
-            channels: channels
-        }
-    });
-
-    return await raw.png().withMetadata().toBuffer();
+    const img = sharp(rbuf, { raw: { width: width, height: height, channels: channels } });
+    return await img.png().withMetadata().toBuffer();
 }
 
 class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDocument {
 
-    private readonly _uri: vscode.Uri;
+    public readonly uri: vscode.Uri;
     private _data: Uint8Array;
 
     public static async create(uri: vscode.Uri): Promise<ImagePreviewDocument> {
@@ -42,12 +54,8 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
 
     private constructor(uri: vscode.Uri, data: Uint8Array) {
         super(() => { });
-        this._uri = uri;
+        this.uri = uri;
         this._data = data;
-    }
-
-    public get uri(): vscode.Uri {
-        return this._uri;
     }
 
     public async toDataUrl(): Promise<string> {
@@ -90,7 +98,6 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
 
         // set content in webview
         const dataUrl = await document.toDataUrl();
-        console.log(dataUrl);
         panel.webview.html = this._generateHtmlForWebview(panel.webview, dataUrl);
     }
 
@@ -111,8 +118,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <link href="${styleMainUri}" rel="stylesheet>
 </head>
 <body>
-    <div id="canvas-container"><canvas id="canvas-area"></canvas></div>
-    <img id="image-preview" src="${dataUrl}">
+    <div id="canvas-container"><img id="image-preview" src="${dataUrl}"></div>
 </body>
 </html>`;
     }
