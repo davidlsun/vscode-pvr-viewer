@@ -172,102 +172,103 @@ type int16 = number;
 type uint16 = number;
 type int = number;
 type uint = number;
+type color3 = Uint8Array;
+type color4 = Uint8Array;
 
 // Macros to help with bit extraction/insertion
-const SHIFTLO = (size: uint, startpos: uint): uint => (startpos   -size+1);
-const SHIFTHI = (size: uint, startpos: uint): uint => (startpos-32-size+1);
-const MASKLO = (size: uint, startpos: uint): uint => (((2<<(size-1))-1) << SHIFTLO(size, startpos));
-const MASKHI = (size: uint, startpos: uint): uint => (((1<<(size  ))-1) << SHIFTHI(size, startpos));
-const GETBITSLO = (src: uint, size: uint, startpos: uint): uint => ((src >> (startpos   -size+1)) & ((1<<size)-1));
-const GETBITSHI = (src: uint, size: uint, startpos: uint): uint => ((src >> (startpos-32-size+1)) & ((1<<size)-1));
-const PUTBITSLO = (dest: uint, data: uint, size: uint, startpos: uint): uint => ((dest & ~MASKLO(size, startpos)) | ((data << SHIFTLO(size, startpos)) & MASKLO(size, startpos)));
-const PUTBITSHI = (dest: uint, data: uint, size: uint, startpos: uint): uint => ((dest & ~MASKHI(size, startpos)) | ((data << SHIFTHI(size, startpos)) & MASKHI(size, startpos)));
+const SHIFTLO = (size: uint, start: uint): uint => (start   -size+1);
+const SHIFTHI = (size: uint, start: uint): uint => (start-32-size+1);
+const MASKLO = (size: uint, start: uint): uint => (((2 << (size-1))-1) << SHIFTLO(size, start));
+const MASKHI = (size: uint, start: uint): uint => (((1 << (size  ))-1) << SHIFTHI(size, start));
+const GETBITSLO = (src: uint, size: uint, start: uint): uint => ((src >> (start   -size+1)) & ((1 << size)-1));
+const GETBITSHI = (src: uint, size: uint, start: uint): uint => ((src >> (start-32-size+1)) & ((1 << size)-1));
+const PUTBITSLO = (dest: uint, data: uint, size: uint, start: uint): uint => ((dest & ~MASKLO(size, start)) | ((data << SHIFTLO(size, start)) & MASKLO(size, start)));
+const PUTBITSHI = (dest: uint, data: uint, size: uint, start: uint): uint => ((dest & ~MASKHI(size, start)) | ((data << SHIFTHI(size, start)) & MASKHI(size, start)));
 
 // Thumb macros and definitions
+const BLOCK_WIDTH = 4;
+const BLOCK_HEIGHT = 4;
 const R_BITS59T = 4;
 const G_BITS59T = 4;
 const B_BITS59T = 4;
 const R_BITS58H = 4;
 const G_BITS58H = 4;
 const B_BITS58H = 4;
-const R = 0;
-const G = 1;
-const B = 2;
-const BLOCK_HEIGHT = 4;
-const BLOCK_WIDTH = 4;
 const TABLE_BITS_59T = 3;
 const TABLE_BITS_58H = 3;
 
 // We will decode the alpha data to a separate memory area. 
+const R = 0;
+const G = 1;
+const B = 2;
 const channelsRGB = 3;
 const channelsA = 1;
 
 // Helper Macros
-const SATURATE = (x: number): uint8 => ((x<0) ? 0 : ((x>255) ? 255 : x));
+const SATURATE = (x: int): uint8 => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
 
-const RED_CHANNEL   = (img: Uint8Array, width: int, x: int, y: int, value: uint8): uint8 => (img[channelsRGB*(y*width+x)+0] = value);
-const GREEN_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): uint8 => (img[channelsRGB*(y*width+x)+1] = value);
-const BLUE_CHANNEL  = (img: Uint8Array, width: int, x: int, y: int, value: uint8): uint8 => (img[channelsRGB*(y*width+x)+2] = value);
-//const ALPHA_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): uint8 => (img[channelsA*(y*width+x)+3] = value);
-
-
-// Global tables
-/*static*/ const table59T = Uint8Array.from([3, 6, 11, 16, 23, 32, 41, 64]);  // 3-bit table for the 59 bit T-mode
-/*static*/ const table58H = Uint8Array.from([3, 6, 11, 16, 23, 32, 41, 64]);  // 3-bit table for the 58 bit H-mode
-/*static*/ const compressParams = [
-    Int32Array.from([-8, -2,  2, 8]),
-    Int32Array.from([-8, -2,  2, 8]),
-    Int32Array.from([-17, -5, 5, 17]),
-    Int32Array.from([-17, -5, 5, 17]),
-    Int32Array.from([-29, -9, 9, 29]),
-    Int32Array.from([-29, -9, 9, 29]),
-    Int32Array.from([-42, -13, 13, 42]),
-    Int32Array.from([-42, -13, 13, 42]),
-    Int32Array.from([-60, -18, 18, 60]),
-    Int32Array.from([-60, -18, 18, 60]),
-    Int32Array.from([-80, -24, 24, 80]),
-    Int32Array.from([-80, -24, 24, 80]),
-    Int32Array.from([-106, -33, 33, 106]),
-    Int32Array.from([-106, -33, 33, 106]),
-    Int32Array.from([-183, -47, 47, 183]),
-    Int32Array.from([-183, -47, 47, 183])
-];
-/*static*/ const unscramble = Int32Array.from([2, 3, 1, 0]);
-
-let alphaTableInitialized = false;
-let alphaTable: Int32Array[] = Array(256).fill(Int32Array.from(Array(8).fill(0)));
-const alphaBase = [
-    Int32Array.from([-15, -9, -6, -3]),
-    Int32Array.from([-13, -10, -7, -3]),
-    Int32Array.from([-13, -8, -5, -2]),
-    Int32Array.from([-13, -6, -4, -2]),
-    Int32Array.from([-12, -8, -6, -3]),
-    Int32Array.from([-11, -9, -7, -3]),
-    Int32Array.from([-11, -8, -7, -4]),
-    Int32Array.from([-11, -8, -5, -3]),
-    Int32Array.from([-10, -8, -6, -2]),
-    Int32Array.from([-10, -8, -5, -2]),
-    Int32Array.from([-10, -8, -4, -2]),
-    Int32Array.from([-10, -7, -5, -2]),
-    Int32Array.from([-10, -7, -4, -3]),
-    Int32Array.from([-10, -3, -2, -1]),
-    Int32Array.from([-9, -8, -6, -4]),
-    Int32Array.from([-9, -7, -5, -3])
-];
+const RED_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[channelsRGB*(y*width+x)+0] = value; };
+const GRN_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[channelsRGB*(y*width+x)+1] = value; };
+const BLU_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[channelsRGB*(y*width+x)+2] = value; };
+//const ALPHA_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[channelsA*(y*width+x)+3] = value; };
 
 // Global variables
 const PGMOUT = true;
 const formatSigned = false;
 
+// Global tables
+const unscramble = [2, 3, 1, 0];
+const table59T = [3, 6, 11, 16, 23, 32, 41, 64];  // 3-bit table for the 59 bit T-mode
+const table58H = [3, 6, 11, 16, 23, 32, 41, 64];  // 3-bit table for the 58 bit H-mode
+const compressParams = [
+    [-8, -2, 2, 8],
+    [-8, -2, 2, 8],
+    [-17, -5, 5, 17],
+    [-17, -5, 5, 17],
+    [-29, -9, 9, 29],
+    [-29, -9, 9, 29],
+    [-42, -13, 13, 42],
+    [-42, -13, 13, 42],
+    [-60, -18, 18, 60],
+    [-60, -18, 18, 60],
+    [-80, -24, 24, 80],
+    [-80, -24, 24, 80],
+    [-106, -33, 33, 106],
+    [-106, -33, 33, 106],
+    [-183, -47, 47, 183],
+    [-183, -47, 47, 183]
+];
+
+// Initialized tables
+let alphaTableInitialized = false;
+const alphaTable = Array<Int32Array>(256).fill(new Int32Array(8));
+const alphaBase = [
+    [-15, -9, -6, -3],
+    [-13, -10, -7, -3],
+    [-13, -8, -5, -2],
+    [-13, -6, -4, -2],
+    [-12, -8, -6, -3],
+    [-11, -9, -7, -3],
+    [-11, -8, -7, -4],
+    [-11, -8, -5, -3],
+    [-10, -8, -6, -2],
+    [-10, -8, -5, -2],
+    [-10, -8, -4, -2],
+    [-10, -7, -5, -2],
+    [-10, -7, -4, -3],
+    [-10, -3, -2, -1],
+    [-9, -8, -6, -4],
+    [-9, -7, -5, -3]
+];
 
 // Code used to create the valtab
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
 function setupAlphaTable(): void
 {
-      if(alphaTableInitialized) {
+    if (alphaTableInitialized) {
         return;
     }
-      alphaTableInitialized = true;
+    alphaTableInitialized = true;
 
     //read table used for alpha compression
     let buf: int;
@@ -275,7 +276,7 @@ function setupAlphaTable(): void
     {
         for(let j:int=0; j<8; j++) 
         {
-            buf=alphaBase[i-16][3-j%4];
+            buf = alphaBase[i-16][3-j%4];
             if (j < 4) {
                 alphaTable[i][j] = buf;
             } else {
@@ -456,7 +457,7 @@ function unstuff59bits(thumbT_word1: uint, thumbT_word2: uint): uint[]
 
 // The color bits are expanded to the full color
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressColor(R_B: int, G_B: int, B_B: int, colors_RGB444: uint8[2][3], colors: uint8[2][3]): void
+function decompressColor(R_B: int, G_B: int, B_B: int, colors_RGB444: Uint8Array[/*2*/]): Uint8Array[/*2*/]
 {
     // The color should be retrieved as:
     //
@@ -466,16 +467,19 @@ function decompressColor(R_B: int, G_B: int, B_B: int, colors_RGB444: uint8[2][3
     // 
     // Note -- this code only work for bit replication from 4 bits and up --- 3 bits needs
     // two copy operations.
+    const colors = Array<Uint8Array>(2).fill(new Uint8Array(3));
 
-     colors[0][R] = (colors_RGB444[0][R] << (8 - R_B)) | (colors_RGB444[0][R] >> (R_B - (8-R_B)) );
-     colors[0][G] = (colors_RGB444[0][G] << (8 - G_B)) | (colors_RGB444[0][G] >> (G_B - (8-G_B)) );
-     colors[0][B] = (colors_RGB444[0][B] << (8 - B_B)) | (colors_RGB444[0][B] >> (B_B - (8-B_B)) );
-     colors[1][R] = (colors_RGB444[1][R] << (8 - R_B)) | (colors_RGB444[1][R] >> (R_B - (8-R_B)) );
-     colors[1][G] = (colors_RGB444[1][G] << (8 - G_B)) | (colors_RGB444[1][G] >> (G_B - (8-G_B)) );
-     colors[1][B] = (colors_RGB444[1][B] << (8 - B_B)) | (colors_RGB444[1][B] >> (B_B - (8-B_B)) );
+    colors[0][R] = (colors_RGB444[0][R] << (8 - R_B)) | (colors_RGB444[0][R] >> (R_B - (8 - R_B)));
+    colors[0][G] = (colors_RGB444[0][G] << (8 - G_B)) | (colors_RGB444[0][G] >> (G_B - (8 - G_B)));
+    colors[0][B] = (colors_RGB444[0][B] << (8 - B_B)) | (colors_RGB444[0][B] >> (B_B - (8 - B_B)));
+    colors[1][R] = (colors_RGB444[1][R] << (8 - R_B)) | (colors_RGB444[1][R] >> (R_B - (8 - R_B)));
+    colors[1][G] = (colors_RGB444[1][G] << (8 - G_B)) | (colors_RGB444[1][G] >> (G_B - (8 - G_B)));
+    colors[1][B] = (colors_RGB444[1][B] << (8 - B_B)) | (colors_RGB444[1][B] >> (B_B - (8 - B_B)));
+
+    return colors;
 }
 
-function calculatePaintColors59T(d: uint8, colors: uint8[2][3], possible_colors: uint8[4][3]): void
+function calculatePaintColors59T(dist: uint8, colors: Uint8Array[/*2*/]): Uint8Array[/*4*/]
 {
     //////////////////////////////////////////////
     //
@@ -487,13 +491,14 @@ function calculatePaintColors59T(d: uint8, colors: uint8[2][3], possible_colors:
     //		|		|			  |
     //		C4      C2			  C3
     //
-    //////////////////////////////////////////////
+    /////////////////////////////////////////////
+    const possible_colors = Array<Uint8Array>(4).fill(new Uint8Array(3));
 
     // C4
-    possible_colors[3][R] = SATURATE(colors[1][R] - table59T[d]);
-    possible_colors[3][G] = SATURATE(colors[1][G] - table59T[d]);
-    possible_colors[3][B] = SATURATE(colors[1][B] - table59T[d]);
-    
+    possible_colors[3][R] = SATURATE(colors[1][R] - table59T[dist]);
+    possible_colors[3][G] = SATURATE(colors[1][G] - table59T[dist]);
+    possible_colors[3][B] = SATURATE(colors[1][B] - table59T[dist]);
+
     // PATTERN_T
     {
         // C3
@@ -501,15 +506,16 @@ function calculatePaintColors59T(d: uint8, colors: uint8[2][3], possible_colors:
         possible_colors[0][G] = colors[0][G];
         possible_colors[0][B] = colors[0][B];
         // C2
-        possible_colors[1][R] = SATURATE(colors[1][R] + table59T[d]);
-        possible_colors[1][G] = SATURATE(colors[1][G] + table59T[d]);
-        possible_colors[1][B] = SATURATE(colors[1][B] + table59T[d]);
+        possible_colors[1][R] = SATURATE(colors[1][R] + table59T[dist]);
+        possible_colors[1][G] = SATURATE(colors[1][G] + table59T[dist]);
+        possible_colors[1][B] = SATURATE(colors[1][B] + table59T[dist]);
         // C1
         possible_colors[2][R] = colors[1][R];
         possible_colors[2][G] = colors[1][G];
         possible_colors[2][B] = colors[1][B];
+    }
 
-    } 
+    return possible_colors;
 }
 
 // Decompress a T-mode block (simple packing)
@@ -522,36 +528,32 @@ function calculatePaintColors59T(d: uint8, colors: uint8[2][3], possible_colors:
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
 function decompressBlockTHUMB59Tc(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
-    let colorsRGB444: uint8[2][3];
-    let colors: uint8[2][3];
-    let paint_colors: uint8[4][3];
-    let block_mask: uint8[4][4];
-
     // First decode left part of block.
+    const colorsRGB444 = Array<Uint8Array>(2).fill(new Uint8Array(3));
     colorsRGB444[0][R] = GETBITSHI(block_part1, 4, 58);
     colorsRGB444[0][G] = GETBITSHI(block_part1, 4, 54);
     colorsRGB444[0][B] = GETBITSHI(block_part1, 4, 50);
-
     colorsRGB444[1][R] = GETBITSHI(block_part1, 4, 46);
     colorsRGB444[1][G] = GETBITSHI(block_part1, 4, 42);
     colorsRGB444[1][B] = GETBITSHI(block_part1, 4, 38);
 
     const distance: uint8 = GETBITSHI(block_part1, TABLE_BITS_59T, 34);
 
-    // Extend the two colors to RGB888	
-    decompressColor(R_BITS59T, G_BITS59T, B_BITS59T, colorsRGB444, colors);	
-    calculatePaintColors59T(distance, colors, paint_colors);
-    
+    // Extend the two colors to RGB888
+    const colors = decompressColor(R_BITS59T, G_BITS59T, B_BITS59T, colorsRGB444);
+    const paint_colors = calculatePaintColors59T(distance, colors);
+
     // Choose one of the four paint colors for each texel
+    const block_mask = Array<Uint8Array>(BLOCK_WIDTH).fill(new Uint8Array(BLOCK_HEIGHT));
     for (let x: uint8 = 0; x < BLOCK_WIDTH; x++) {
         for (let y: uint8 = 0; y < BLOCK_HEIGHT; y++) {
             //block_mask[x][y] = GETBITSLO(block_part2,2,31-(y*4+x)*2);
             block_mask[x][y] = GETBITSLO(block_part2,1,(y+x*4)+16)<<1;
             block_mask[x][y] |= GETBITSLO(block_part2,1,(y+x*4));
 
-            img[channelsRGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]); // RED
-            img[channelsRGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]); // GREEN
-            img[channelsRGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]); // BLUE
+            img[channelsRGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]);
+            img[channelsRGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]);
+            img[channelsRGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]);
         }
     }
 }
@@ -564,9 +566,8 @@ function decompressBlockTHUMB59T(block_part1: uint, block_part2: uint, img: Uint
 // Calculate the paint colors from the block colors 
 // using a distance d and one of the H- or T-patterns.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function calculatePaintColors58H(d: uint8, colors: uint8[2][3], possible_colors: uint8[4][3]): void
+function calculatePaintColors58H(dist: uint8, colors: Uint8Array[/*2*/]): Uint8Array[/*4*/]
 {
-    
     //////////////////////////////////////////////
     //
     //		C3      C1		C4----C1---C2
@@ -578,43 +579,41 @@ function calculatePaintColors58H(d: uint8, colors: uint8[2][3], possible_colors:
     //		C4      C2			  C3
     //
     //////////////////////////////////////////////
+    const possible_colors = Array<Uint8Array>(4).fill(new Uint8Array(3));
 
     // C4
-    possible_colors[3][R] = SATURATE(colors[1][R] - table58H[d]);
-    possible_colors[3][G] = SATURATE(colors[1][G] - table58H[d]);
-    possible_colors[3][B] = SATURATE(colors[1][B] - table58H[d]);
+    possible_colors[3][R] = SATURATE(colors[1][R] - table58H[dist]);
+    possible_colors[3][G] = SATURATE(colors[1][G] - table58H[dist]);
+    possible_colors[3][B] = SATURATE(colors[1][B] - table58H[dist]);
     
     // PATTERN_H
     { 
         // C1
-        possible_colors[0][R] = SATURATE(colors[0][R] + table58H[d]);
-        possible_colors[0][G] = SATURATE(colors[0][G] + table58H[d]);
-        possible_colors[0][B] = SATURATE(colors[0][B] + table58H[d]);
+        possible_colors[0][R] = SATURATE(colors[0][R] + table58H[dist]);
+        possible_colors[0][G] = SATURATE(colors[0][G] + table58H[dist]);
+        possible_colors[0][B] = SATURATE(colors[0][B] + table58H[dist]);
         // C2
-        possible_colors[1][R] = SATURATE(colors[0][R] - table58H[d]);
-        possible_colors[1][G] = SATURATE(colors[0][G] - table58H[d]);
-        possible_colors[1][B] = SATURATE(colors[0][B] - table58H[d]);
+        possible_colors[1][R] = SATURATE(colors[0][R] - table58H[dist]);
+        possible_colors[1][G] = SATURATE(colors[0][G] - table58H[dist]);
+        possible_colors[1][B] = SATURATE(colors[0][B] - table58H[dist]);
         // C3
-        possible_colors[2][R] = SATURATE(colors[1][R] + table58H[d]);
-        possible_colors[2][G] = SATURATE(colors[1][G] + table58H[d]);
-        possible_colors[2][B] = SATURATE(colors[1][B] + table58H[d]);
-    } 
+        possible_colors[2][R] = SATURATE(colors[1][R] + table58H[dist]);
+        possible_colors[2][G] = SATURATE(colors[1][G] + table58H[dist]);
+        possible_colors[2][B] = SATURATE(colors[1][B] + table58H[dist]);
+    }
+
+    return possible_colors;
 }
 
 // Decompress an H-mode block 
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
 function decompressBlockTHUMB58Hc(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
-    let colors: uint8[2][3];
-    let colorsRGB444: uint8[2][3];
-    let paint_colors: uint8[4][3];
-    let block_mask: uint8[4][4];
-    
     // First decode left part of block.
+    const colorsRGB444 = Array<Uint8Array>(2).fill(new Uint8Array(3));
     colorsRGB444[0][R] = GETBITSHI(block_part1, 4, 57);
     colorsRGB444[0][G] = GETBITSHI(block_part1, 4, 53);
     colorsRGB444[0][B] = GETBITSHI(block_part1, 4, 49);
-
     colorsRGB444[1][R] = GETBITSHI(block_part1, 4, 45);
     colorsRGB444[1][G] = GETBITSHI(block_part1, 4, 41);
     colorsRGB444[1][B] = GETBITSHI(block_part1, 4, 37);
@@ -627,20 +626,21 @@ function decompressBlockTHUMB58Hc(block_part1: uint, block_part2: uint, img: Uin
         distance |= 1;
     }
 
-    // Extend the two colors to RGB888	
-    decompressColor(R_BITS58H, G_BITS58H, B_BITS58H, colorsRGB444, colors);	
-    calculatePaintColors58H(distance, colors, paint_colors);
+    // Extend the two colors to RGB888
+    const colors = decompressColor(R_BITS58H, G_BITS58H, B_BITS58H, colorsRGB444);
+    const paint_colors = calculatePaintColors58H(distance, colors);
     
     // Choose one of the four paint colors for each texel
+    const block_mask = Array<Uint8Array>(BLOCK_WIDTH).fill(new Uint8Array(BLOCK_HEIGHT));
     for (let x: uint8 = 0; x < BLOCK_WIDTH; x++) {
         for (let y: uint8 = 0; y < BLOCK_HEIGHT; y++) {
             //block_mask[x][y] = GETBITSLO(block_part2,2,31-(y*4+x)*2);
             block_mask[x][y] = GETBITSLO(block_part2,1,(y+x*4)+16)<<1;
             block_mask[x][y] |= GETBITSLO(block_part2,1,(y+x*4));
 
-            img[channelsRGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]); // RED
-            img[channelsRGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]); // GREEN
-            img[channelsRGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]); // BLUE
+            img[channelsRGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]);
+            img[channelsRGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]);
+            img[channelsRGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]);
         }
     }
 }
@@ -701,7 +701,6 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
     const avg_color = new Uint8Array(3);
     const enc_color1 = new Uint8Array(3);
     const enc_color2 = new Uint8Array(3);
-    const diff = new Int8Array(3);
     let index: int;
     let shift: int;
 
@@ -743,9 +742,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL   (img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
-                    GREEN_CHANNEL (img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
-                    BLUE_CHANNEL  (img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
+                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
+                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
+                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
                 }
             }
         }
@@ -760,9 +759,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL   (img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
-                    GREEN_CHANNEL (img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
-                    BLUE_CHANNEL  (img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
+                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
+                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
+                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
                 }
                 shift += 2;
             }
@@ -795,9 +794,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL   (img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
-                    GREEN_CHANNEL (img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
-                    BLUE_CHANNEL  (img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
+                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
+                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
+                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
                 }
             }
         }
@@ -812,9 +811,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL   (img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
-                    GREEN_CHANNEL (img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
-                    BLUE_CHANNEL  (img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
+                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
+                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
+                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
                 }
                 shift += 2;
             }
@@ -865,9 +864,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL   (img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
-                    GREEN_CHANNEL (img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
-                    BLUE_CHANNEL  (img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
+                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
+                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
+                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
                 }
             }
         }
@@ -882,15 +881,16 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL   (img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
-                    GREEN_CHANNEL (img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
-                    BLUE_CHANNEL  (img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
+                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
+                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
+                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
                 }
                 shift += 2;
             }
         }
 
         // Now decode right part of block. 
+        const diff = new Int8Array(3);
         diff[0] = GETBITSHI(block_part1, 3, 58);
         diff[1] = GETBITSHI(block_part1, 3, 50);
         diff[2] = GETBITSHI(block_part1, 3, 42);
@@ -928,9 +928,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL   (img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
-                    GREEN_CHANNEL (img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
-                    BLUE_CHANNEL  (img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
+                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
+                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
+                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
                 }
             }
         }
@@ -945,9 +945,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL   (img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
-                    GREEN_CHANNEL (img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
-                    BLUE_CHANNEL  (img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
+                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[0]+compressParams[table][index]));
+                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[1]+compressParams[table][index]));
+                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[2]+compressParams[table][index]));
                 }
                 shift += 2;
             }
@@ -965,7 +965,6 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
 function decompressBlockETC2c(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
     const color1 = new Int8Array(3);
-    const diff = new Int8Array(3);
 
     const diffbit: boolean = (GETBITSHI(block_part1, 1, 33) !== 0);
 
@@ -979,6 +978,7 @@ function decompressBlockETC2c(block_part1: uint, block_part2: uint, img: Uint8Ar
         color1[2] = GETBITSHI(block_part1, 5, 47);
 
         // Diff color
+        const diff = new Int8Array(3);
         diff[0] = GETBITSHI(block_part1, 3, 58);
         diff[1] = GETBITSHI(block_part1, 3, 50);
         diff[2] = GETBITSHI(block_part1, 3, 42);
@@ -1027,7 +1027,6 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
     const avg_color = new Uint8Array(3);
     const enc_color1 = new Uint8Array(3);
     const enc_color2 = new Uint8Array(3);
-    const diff = new Uint8Array(3);
     let index: int;
     let shift: int;
 
@@ -1066,15 +1065,15 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
                     mod = 0;
                 }
                 
-                RED_CHANNEL   (img,width,x,y, SATURATE(avg_color[0]+mod));
-                GREEN_CHANNEL (img,width,x,y, SATURATE(avg_color[1]+mod));
-                BLUE_CHANNEL  (img,width,x,y, SATURATE(avg_color[2]+mod));
+                RED_CHANNEL(img,width,x,y, SATURATE(avg_color[0]+mod));
+                GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[1]+mod));
+                BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[2]+mod));
 
                 if (!diffbit && index === 1) {
                     alpha[(y*width+x)*channelsA] = 0;
-                    RED_CHANNEL   (img,width,x,y, 0);
-                    GREEN_CHANNEL (img,width,x,y, 0);
-                    BLUE_CHANNEL  (img,width,x,y, 0);
+                    RED_CHANNEL(img,width,x,y, 0);
+                    GRN_CHANNEL(img,width,x,y, 0);
+                    BLU_CHANNEL(img,width,x,y, 0);
                 } else {
                     alpha[(y*width+x)*channelsA] = 255;
                 }
@@ -1097,15 +1096,15 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
                     mod = 0;
                 }
 
-                RED_CHANNEL   (img,width,x,y, SATURATE(avg_color[0]+mod));
-                GREEN_CHANNEL (img,width,x,y, SATURATE(avg_color[1]+mod));
-                BLUE_CHANNEL  (img,width,x,y, SATURATE(avg_color[2]+mod));
+                RED_CHANNEL(img,width,x,y, SATURATE(avg_color[0]+mod));
+                GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[1]+mod));
+                BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[2]+mod));
 
                 if (!diffbit && index === 1) {
                     alpha[(y*width+x)*channelsA] = 0;
-                    RED_CHANNEL   (img,width,x,y, 0);
-                    GREEN_CHANNEL (img,width,x,y, 0);
-                    BLUE_CHANNEL  (img,width,x,y, 0);
+                    RED_CHANNEL(img,width,x,y, 0);
+                    GRN_CHANNEL(img,width,x,y, 0);
+                    BLU_CHANNEL(img,width,x,y, 0);
                 } else {
                     alpha[(y*width+x)*channelsA] = 255;
                 }
@@ -1113,7 +1112,9 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
             shift += 2;
         }
     }
+
     // Now decode right part of block. 
+    const diff = new Uint8Array(3);
     diff[0] = GETBITSHI(block_part1, 3, 58);
     diff[1] = GETBITSHI(block_part1, 3, 50);
     diff[2] = GETBITSHI(block_part1, 3, 42);
@@ -1156,15 +1157,15 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
                     mod = 0;
                 }
                 
-                RED_CHANNEL   (img,width,x,y, SATURATE(avg_color[0]+mod));
-                GREEN_CHANNEL (img,width,x,y, SATURATE(avg_color[1]+mod));
-                BLUE_CHANNEL  (img,width,x,y, SATURATE(avg_color[2]+mod));
+                RED_CHANNEL(img,width,x,y, SATURATE(avg_color[0]+mod));
+                GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[1]+mod));
+                BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[2]+mod));
 
                 if (!diffbit && index === 1) {
                     alpha[(y*width+x)*channelsA] = 0;
-                    RED_CHANNEL   (img,width,x,y, 0);
-                    GREEN_CHANNEL (img,width,x,y, 0);
-                    BLUE_CHANNEL  (img,width,x,y, 0);
+                    RED_CHANNEL(img,width,x,y, 0);
+                    GRN_CHANNEL(img,width,x,y, 0);
+                    BLU_CHANNEL(img,width,x,y, 0);
                 } else {
                     alpha[(y*width+x)*channelsA] = 255;
                 }
@@ -1187,15 +1188,15 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
                     mod = 0;
                 }
                 
-                RED_CHANNEL   (img,width,x,y, SATURATE(avg_color[0]+mod));
-                GREEN_CHANNEL (img,width,x,y, SATURATE(avg_color[1]+mod));
-                BLUE_CHANNEL  (img,width,x,y, SATURATE(avg_color[2]+mod));
+                RED_CHANNEL(img,width,x,y, SATURATE(avg_color[0]+mod));
+                GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[1]+mod));
+                BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[2]+mod));
 
                 if (!diffbit && index === 1) {
                     alpha[(y*width+x)*channelsA] = 0;
-                    RED_CHANNEL   (img,width,x,y, 0);
-                    GREEN_CHANNEL (img,width,x,y, 0);
-                    BLUE_CHANNEL  (img,width,x,y, 0);
+                    RED_CHANNEL(img,width,x,y, 0);
+                    GRN_CHANNEL(img,width,x,y, 0);
+                    BLU_CHANNEL(img,width,x,y, 0);
                 } else {
                     alpha[(y*width+x)*channelsA] = 255;
                 }
@@ -1214,16 +1215,11 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
 function decompressBlockTHUMB59TAlphaC(block_part1: uint, block_part2: uint, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
-    let colorsRGB444: uint8[2][3];
-    let colors: uint8[2][3];
-    let paint_colors: uint8[4][3];
-    let block_mask: uint8[4][4];
-
     // First decode left part of block.
+    const colorsRGB444 = Array<Uint8Array>(2).fill(new Uint8Array(3));
     colorsRGB444[0][R] = GETBITSHI(block_part1, 4, 58);
     colorsRGB444[0][G] = GETBITSHI(block_part1, 4, 54);
     colorsRGB444[0][B] = GETBITSHI(block_part1, 4, 50);
-
     colorsRGB444[1][R] = GETBITSHI(block_part1, 4, 46);
     colorsRGB444[1][G] = GETBITSHI(block_part1, 4, 42);
     colorsRGB444[1][B] = GETBITSHI(block_part1, 4, 38);
@@ -1231,19 +1227,20 @@ function decompressBlockTHUMB59TAlphaC(block_part1: uint, block_part2: uint, img
     const distance: uint8 = GETBITSHI(block_part1, TABLE_BITS_59T, 34);
 
     // Extend the two colors to RGB888	
-    decompressColor(R_BITS59T, G_BITS59T, B_BITS59T, colorsRGB444, colors);	
-    calculatePaintColors59T(distance, colors, paint_colors);
-    
+    const colors = decompressColor(R_BITS59T, G_BITS59T, B_BITS59T, colorsRGB444);
+    const paint_colors = calculatePaintColors59T(distance, colors);
+
     // Choose one of the four paint colors for each texel
+    const block_mask = Array<Uint8Array>(BLOCK_WIDTH).fill(new Uint8Array(BLOCK_HEIGHT));
     for (let x: uint8 = 0; x < BLOCK_WIDTH; x++) {
         for (let y: uint8 = 0; y < BLOCK_HEIGHT; y++) {
             //block_mask[x][y] = GETBITSLO(block_part2,2,31-(y*4+x)*2);
             block_mask[x][y] = GETBITSLO(block_part2,1,(y+x*4)+16)<<1;
             block_mask[x][y] |= GETBITSLO(block_part2,1,(y+x*4));
 
-            img[channelsRGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]); // RED
-            img[channelsRGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]); // GREEN
-            img[channelsRGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]); // BLUE
+            img[channelsRGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]);
+            img[channelsRGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]);
+            img[channelsRGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]);
 
             if (block_mask[x][y] === 2) {
                 alpha[channelsA*(x+startx+(y+starty)*width)] = 0;
@@ -1266,16 +1263,11 @@ function decompressBlockTHUMB59TAlpha(block_part1: uint, block_part2: uint, img:
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
 function decompressBlockTHUMB58HAlphaC(block_part1: uint, block_part2: uint, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
-    let colors: uint8[2][3];
-    let colorsRGB444: uint8[2][3];
-    let paint_colors: uint8[4][3];
-    let block_mask: uint8[4][4];
-
     // First decode left part of block.
+    const colorsRGB444 = Array<Uint8Array>(2).fill(new Uint8Array(3));
     colorsRGB444[0][R] = GETBITSHI(block_part1, 4, 57);
     colorsRGB444[0][G] = GETBITSHI(block_part1, 4, 53);
     colorsRGB444[0][B] = GETBITSHI(block_part1, 4, 49);
-
     colorsRGB444[1][R] = GETBITSHI(block_part1, 4, 45);
     colorsRGB444[1][G] = GETBITSHI(block_part1, 4, 41);
     colorsRGB444[1][B] = GETBITSHI(block_part1, 4, 37);
@@ -1288,21 +1280,22 @@ function decompressBlockTHUMB58HAlphaC(block_part1: uint, block_part2: uint, img
         distance |= 1;
     }
 
-    // Extend the two colors to RGB888	
-    decompressColor(R_BITS58H, G_BITS58H, B_BITS58H, colorsRGB444, colors);	
-    calculatePaintColors58H(distance, colors, paint_colors);
-    
+    // Extend the two colors to RGB888
+    const colors = decompressColor(R_BITS58H, G_BITS58H, B_BITS58H, colorsRGB444);
+    const paint_colors = calculatePaintColors58H(distance, colors);
+
     // Choose one of the four paint colors for each texel
+    const block_mask = Array<Uint8Array>(BLOCK_WIDTH).fill(new Uint8Array(BLOCK_HEIGHT));
     for (let x: uint8 = 0; x < BLOCK_WIDTH; x++) {
         for (let y: uint8 = 0; y < BLOCK_HEIGHT; y++) {
             //block_mask[x][y] = GETBITSLO(block_part2,2,31-(y*4+x)*2);
             block_mask[x][y] = GETBITSLO(block_part2,1,(y+x*4)+16)<<1;
             block_mask[x][y] |= GETBITSLO(block_part2,1,(y+x*4));
 
-            img[channelsRGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]); // RED
-            img[channelsRGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]); // GREEN
-            img[channelsRGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]); // BLUE
-            
+            img[channelsRGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]);
+            img[channelsRGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]);
+            img[channelsRGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]);
+
             if (block_mask[x][y] === 2) {
                 alpha[channelsA*(x+startx+(y+starty)*width)] = 0;
                 img[channelsRGB*((starty+y)*width+startx+x)+R] = 0;
@@ -1324,9 +1317,6 @@ function decompressBlockTHUMB58HAlpha(block_part1: uint, block_part2: uint, img:
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
 function decompressBlockETC21BitAlphaC(block_part1: uint, block_part2: uint, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
-    const color1 = new Int8Array(3);
-    const diff = new Int8Array(3);
-
     const diffbit: boolean = (GETBITSHI(block_part1, 1, 33) !== 0);
 
     if (diffbit)
@@ -1334,11 +1324,13 @@ function decompressBlockETC21BitAlphaC(block_part1: uint, block_part2: uint, img
         // We have diffbit = 1, meaning no transparent pixels. regular decompression.
 
         // Base color
+        const color1 = new Int8Array(3);
         color1[0] = GETBITSHI(block_part1, 5, 63);
         color1[1] = GETBITSHI(block_part1, 5, 55);
         color1[2] = GETBITSHI(block_part1, 5, 47);
 
         // Diff color
+        const diff = new Int8Array(3);
         diff[0] = GETBITSHI(block_part1, 3, 58);
         diff[1] = GETBITSHI(block_part1, 3, 50);
         diff[2] = GETBITSHI(block_part1, 3, 42);
@@ -1379,11 +1371,13 @@ function decompressBlockETC21BitAlphaC(block_part1: uint, block_part2: uint, img
         // We have diffbit = 0, transparent pixels. Only T-, H- or regular diff-mode possible.
         
         // Base color
+        const color1 = new Int8Array(3);
         color1[0] = GETBITSHI(block_part1, 5, 63);
         color1[1] = GETBITSHI(block_part1, 5, 55);
         color1[2] = GETBITSHI(block_part1, 5, 47);
 
         // Diff color
+        const diff = new Int8Array(3);
         diff[0] = GETBITSHI(block_part1, 3, 58);
         diff[1] = GETBITSHI(block_part1, 3, 50);
         diff[2] = GETBITSHI(block_part1, 3, 42);
@@ -1433,11 +1427,11 @@ function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img:
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
 function getbit(input: uint8, frompos: int, topos: int): uint8
 {
-    let output: uint8 = 0;
     if (frompos > topos) {
-        return ((1<<frompos)&input)>>(frompos-topos);
+        return ((1 << frompos) & input) >> (frompos - topos);
+    } else {
+        return ((1 << frompos) & input) << (topos - frompos);
     }
-    return ((1<<frompos)&input)<<(topos-frompos);
 }
 
 // Decodes tha alpha component in a block coded with GL_COMPRESSED_RGBA8_ETC2_EAC.
@@ -1452,6 +1446,7 @@ function decompressBlockAlphaC(data: Uint8Array, img: Uint8Array, width: int, he
     
     let bit: uint8 = 0;
     let byte: int = 2;
+    
     //extract an alpha value for each pixel.
     for (let x: int = 0; x < 4; x++) {
         for (let y: int = 0; y < 4; y++) {
@@ -1481,50 +1476,51 @@ function decompressBlockAlpha(data: Uint8Array, img: Uint8Array, width: int, hei
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
 function get16bits11signed(base: int, table: int, mul: int, index: int): int16
 {
-    let elevenbase: int = base-128;
+    let elevenbase: int = base - 128;
     if (elevenbase === -128) {
-        elevenbase =- 127;
+        elevenbase = -127;
     }
     elevenbase *= 8;
+
     //i want the positive value here
-    let tabVal: int = -alphaBase[table][3-index%4]-1;
+    let tabVal: int = -alphaBase[table][3-index%4] - 1;
     //and the sign, please
     const sign: boolean = (1-(index/4) !== 0);
     
     if (sign) {
-        tabVal=tabVal+1;
+        tabVal = tabVal + 1;
     }
-    let elevenTabVal: int = tabVal*8;
+    let elevenTabVal: int = tabVal * 8;
 
     if (mul !== 0) {
-        elevenTabVal*=mul;
+        elevenTabVal *= mul;
     } else {
-        elevenTabVal/=8;
+        elevenTabVal /= 8;
     }
 
     if (sign) {
-        elevenTabVal=-elevenTabVal;
+        elevenTabVal = -elevenTabVal;
     }
 
     //calculate sum
-    let elevenbits: int = elevenbase+elevenTabVal;
+    let elevenbits: int = elevenbase + elevenTabVal;
 
     //clamp..
     if (elevenbits >= 1024) {
-        elevenbits=1023;
+        elevenbits = 1023;
     } else if (elevenbits < -1023) {
-        elevenbits=-1023;
+        elevenbits = -1023;
     }
     //this is the value we would actually output.. 
     //but there aren't any good 11-bit file or uncompressed GL formats
     //so we extend to 15 bits signed.
     const sign2: boolean = (elevenbits < 0);
-    elevenbits=Math.abs(elevenbits);
-    let fifteenbits: int16 = (elevenbits<<5)+(elevenbits>>5);
+    elevenbits = Math.abs(elevenbits);
+    let fifteenbits: int16 = (elevenbits<<5) + (elevenbits>>5);
     let sixteenbits: int16 = fifteenbits;
 
     if (sign2) {
-        sixteenbits=-sixteenbits;
+        sixteenbits = -sixteenbits;
     }
     return sixteenbits;
 }
@@ -1534,30 +1530,30 @@ function get16bits11signed(base: int, table: int, mul: int, index: int): int16
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
 function get16bits11bits(base: int, table: int, mul: int, index: int): uint16
 {
-    const elevenbase: int = base*8+4;
+    const elevenbase: int = base * 8 + 4;
 
     //i want the positive value here
-    let tabVal:int = -alphaBase[table][3-index%4]-1;
+    let tabVal: int = -alphaBase[table][3-index%4] - 1;
     //and the sign, please
     const sign: boolean = (1-(index/4) !== 0);
     
     if (sign) {
-        tabVal=tabVal+1;
+        tabVal = tabVal + 1;
     }
-    let elevenTabVal: int = tabVal*8;
+    let elevenTabVal: int = tabVal * 8;
 
     if (mul !== 0) {
-        elevenTabVal*=mul;
+        elevenTabVal *= mul;
     } else {
-        elevenTabVal/=8;
+        elevenTabVal /= 8;
     }
 
     if (sign) {
-        elevenTabVal=-elevenTabVal;
+        elevenTabVal = -elevenTabVal;
     }
 
     //calculate sum
-    let elevenbits:int = elevenbase+elevenTabVal;
+    let elevenbits: int = elevenbase + elevenTabVal;
 
     //clamp..
     if (elevenbits >= 256 * 8) {
@@ -1589,6 +1585,7 @@ function decompressBlockAlpha16bitC(data: Uint8Array, img: Uint8Array, width: in
 
     let bit: uint8 = 0;
     let byte: int = 2;
+
     //extract an alpha value for each pixel.
     for (let x: int = 0; x < 4; x++) {
         for (let y: int = 0; y < 4; y++) {
