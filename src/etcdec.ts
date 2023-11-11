@@ -175,12 +175,6 @@ type int16 = number;
 type uint16 = number;
 type int = number;
 type uint32 = number;
-type int8_ptr = int8*;
-type uint8_ptr = uint8*;
-type int16_ptr = int16*;
-type uint16_ptr = uint16*;
-type uint32_ptr = uint32*;
-type uint32_ref = uint32&;
 type FILE_ptr = FILE*;
 
 // Macros to help with bit extraction/insertion
@@ -206,13 +200,13 @@ const G = 1;
 const B = 2;
 const BLOCKHEIGHT = 4;
 const BLOCKWIDTH = 4;
-const BINPOW = (power) => (1<<(power));
+//const BINPOW = (power) => (1<<(power));
 const TABLE_BITS_59T = 3;
 const TABLE_BITS_58H = 3;
 
 // Helper Macros
-const CLAMP = (ll,x,ul) => (((x)<(ll)) ? (ll) : (((x)>(ul)) ? (ul) : (x)));
-const JAS_ROUND = (x) => (((x) < 0.0 ) ? ((int)((x)-0.5)) : ((int)((x)+0.5)));
+const CLAMP = <T>(ll:T,x:T,ul:T) => (((x)<(ll)) ? (ll) : (((x)>(ul)) ? (ul) : (x)));
+//const JAS_ROUND = (x) => (((x) < 0.0 ) ? ((int)((x)-0.5)) : ((int)((x)+0.5)));
 
 const SET_RED_CHANNEL = (img,width,x,y,channels,value) => {return img[channels*(y*width+x)+0] = value;};
 const SET_GREEN_CHANNEL = (img,width,x,y,channels,value) => {return img[channels*(y*width+x)+1] = value;};
@@ -312,7 +306,7 @@ function setupAlphaTable(): void
 
 // Read a word in big endian style
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function read_big_endian_2byte_word(blockadr: uint16_ptr, f: FILE_ptr): void
+function read_big_endian_2byte_word(blockadr: Uint16Array, f: FILE_ptr): void
 {
 	let bytes: uint8[2];
 	let block: uint16;
@@ -330,7 +324,7 @@ function read_big_endian_2byte_word(blockadr: uint16_ptr, f: FILE_ptr): void
 
 // Read a word in big endian style
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function read_big_endian_4byte_word(blockadr: uint32_ptr, f: FILE_ptr): void
+function read_big_endian_4byte_word(blockadr: Uint32Array, f: FILE_ptr): void
 {
 	let bytes: uint8[4];
 	let block: uint32;
@@ -358,8 +352,8 @@ function read_big_endian_4byte_word(blockadr: uint32_ptr, f: FILE_ptr): void
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
 function unstuff57bits(planar_word1: uint32, planar_word2: uint32): uint32[]
 {
-	let planar57_word1: uint32_ref;
-	let planar57_word2: uint32_ref;
+	let planar57_word1: uint32;
+	let planar57_word2: uint32;
 	// Get bits from twotimer configuration for 57 bits
 	// 
 	// Go to this bit layout:
@@ -553,7 +547,7 @@ function decompressColor(R_B: int, G_B: int, B_B: int, colors_RGB444: uint8[2][3
  	colors[1][B] = (colors_RGB444[1][B] << (8 - B_B)) | (colors_RGB444[1][B] >> (B_B - (8-B_B)) );
 }
 
-function calculatePaintColors59T(d: uint8, p: Pattern, colors: uint8[2][3], possible_colors: uint8[4][3]): void
+function calculatePaintColors59T(d: uint8, colors: uint8[2][3], possible_colors: uint8[4][3]): void
 {
 	//////////////////////////////////////////////
 	//
@@ -572,7 +566,7 @@ function calculatePaintColors59T(d: uint8, p: Pattern, colors: uint8[2][3], poss
 	possible_colors[3][G] = CLAMP(0,colors[1][G] - table59T[d],255);
 	possible_colors[3][B] = CLAMP(0,colors[1][B] - table59T[d],255);
 	
-	if (p == Pattern.PATTERN_T) 
+	// PATTERN_T
 	{
 		// C3
 		possible_colors[0][R] = colors[0][R];
@@ -588,11 +582,6 @@ function calculatePaintColors59T(d: uint8, p: Pattern, colors: uint8[2][3], poss
 		possible_colors[2][B] = colors[1][B];
 
 	} 
-	else 
-	{
-		printf("Invalid pattern. Terminating");
-		exit(1);
-	}
 }
 // Decompress a T-mode block (simple packing)
 // Simple 59T packing:
@@ -602,7 +591,7 @@ function calculatePaintColors59T(d: uint8, p: Pattern, colors: uint8[2][3], poss
 //|31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00|
 //|----------------------------------------index bits---------------------------------------------|
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB59Tc(block_part1: uint32, block_part2: uint32, img: uint8_ptr, width: int, height: int, startx: int, starty: int, channels: int): void
+function decompressBlockTHUMB59Tc(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
 {
 	let colorsRGB444: uint8[2][3];
 	let colors: uint8[2][3];
@@ -623,7 +612,7 @@ function decompressBlockTHUMB59Tc(block_part1: uint32, block_part2: uint32, img:
 
 	// Extend the two colors to RGB888	
 	decompressColor(R_BITS59T, G_BITS59T, B_BITS59T, colorsRGB444, colors);	
-	calculatePaintColors59T(distance, Pattern.PATTERN_T, colors, paint_colors);
+	calculatePaintColors59T(distance, colors, paint_colors);
 	
 	// Choose one of the four paint colors for each texel
 	for (let x:uint8 = 0; x < BLOCKWIDTH; ++x) 
@@ -643,7 +632,7 @@ function decompressBlockTHUMB59Tc(block_part1: uint32, block_part2: uint32, img:
 	}
 }
 
-function decompressBlockTHUMB59T(block_part1: uint32, block_part2: uint32, img: uint8_ptr, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB59T(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockTHUMB59Tc(block_part1, block_part2, img, width, height, startx, starty, 3);
 }
@@ -651,7 +640,7 @@ function decompressBlockTHUMB59T(block_part1: uint32, block_part2: uint32, img: 
 // Calculate the paint colors from the block colors 
 // using a distance d and one of the H- or T-patterns.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function calculatePaintColors58H(d: uint8, p: Pattern, colors: uint8[2][3], possible_colors: uint8[4][3]): void
+function calculatePaintColors58H(d: uint8, colors: uint8[2][3], possible_colors: uint8[4][3]): void
 {
 	
 	//////////////////////////////////////////////
@@ -671,7 +660,7 @@ function calculatePaintColors58H(d: uint8, p: Pattern, colors: uint8[2][3], poss
 	possible_colors[3][G] = CLAMP(0,colors[1][G] - table58H[d],255);
 	possible_colors[3][B] = CLAMP(0,colors[1][B] - table58H[d],255);
 	
-	if (p == Pattern.PATTERN_H) 
+	// PATTERN_H
 	{ 
 		// C1
 		possible_colors[0][R] = CLAMP(0,colors[0][R] + table58H[d],255);
@@ -686,16 +675,11 @@ function calculatePaintColors58H(d: uint8, p: Pattern, colors: uint8[2][3], poss
 		possible_colors[2][G] = CLAMP(0,colors[1][G] + table58H[d],255);
 		possible_colors[2][B] = CLAMP(0,colors[1][B] + table58H[d],255);
 	} 
-	else 
-	{
-		printf("Invalid pattern. Terminating");
-		exit(1);
-	}
 }
 
 // Decompress an H-mode block 
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB58Hc(block_part1: uint32, block_part2: uint32, img: uint8_ptr, width: int, height: int, startx: int, starty: int, channels: int): void
+function decompressBlockTHUMB58Hc(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
 {
 	let col0: uint32;
 	let col1: uint32;
@@ -728,7 +712,7 @@ function decompressBlockTHUMB58Hc(block_part1: uint32, block_part2: uint32, img:
 	// Extend the two colors to RGB888	
 	decompressColor(R_BITS58H, G_BITS58H, B_BITS58H, colorsRGB444, colors);	
 	
-	calculatePaintColors58H(distance, Pattern.PATTERN_H, colors, paint_colors);
+	calculatePaintColors58H(distance, colors, paint_colors);
 	
 	// Choose one of the four paint colors for each texel
 	for (let x:uint8 = 0; x < BLOCKWIDTH; ++x) 
@@ -747,14 +731,14 @@ function decompressBlockTHUMB58Hc(block_part1: uint32, block_part2: uint32, img:
 		}
 	}
 }
-function decompressBlockTHUMB58H(block_part1: uint32, block_part2: uint32, img: uint8_ptr, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB58H(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockTHUMB58Hc(block_part1, block_part2, img, width, height, startx, starty, 3);
 }
 
 // Decompress the planar mode.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockPlanar57c(compressed57_1: uint32, compressed57_2: uint32, img: uint8_ptr, width: int, height: int, startx: int, starty: int, channels: int): void
+function decompressBlockPlanar57c(compressed57_1: uint32, compressed57_2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
 {
 	let colorO: uint8[3];
 	let colorH: uint8[3];
@@ -801,13 +785,13 @@ function decompressBlockPlanar57c(compressed57_1: uint32, compressed57_2: uint32
 		}
 	}
 }
-function decompressBlockPlanar57(compressed57_1: uint32, compressed57_2: uint32, img: uint8_ptr, width: int, height: int, startx: int, starty: int): void
+function decompressBlockPlanar57(compressed57_1: uint32, compressed57_2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockPlanar57c(compressed57_1, compressed57_2, img, width, height, startx, starty, 3);
 }
 // Decompress an ETC1 block (or ETC2 using individual or differential mode).
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img: uint8_ptr, width: int, height: int, startx: int, starty: int, channels: int): void
+function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
 {
 	let avg_color: uint8[3];
 	let enc_color1: uint8[3];
@@ -1090,14 +1074,14 @@ function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img:
 		}
 	}
 }
-function decompressBlockDiffFlip(block_part1: uint32, block_part2: uint32, img: uint8_ptr, width: int, height: int, startx: int, starty: int): void
+function decompressBlockDiffFlip(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockDiffFlipC(block_part1, block_part2, img, width, height, startx, starty, 3);
 }
 
 // Decompress an ETC2 RGB block
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockETC2c(block_part1: uint32, block_part2: uint32, img: uint8_ptr, width: int, height: int, startx: int, starty: int, channels: int): void
+function decompressBlockETC2c(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
 {
 	let diffbit: int;
 	let color1: int8[3];
@@ -1160,13 +1144,13 @@ function decompressBlockETC2c(block_part1: uint32, block_part2: uint32, img: uin
 		decompressBlockDiffFlipC(block_part1, block_part2, img, width, height, startx, starty, channels);
 	}
 }
-function decompressBlockETC2(block_part1: uint32, block_part2: uint32, img: uint8_ptr, width: int, height: int, startx: int, starty: int): void
+function decompressBlockETC2(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockETC2c(block_part1, block_part2, img, width, height, startx, starty, 3);
 }
 // Decompress an ETC2 block with punchthrough alpha
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockDifferentialWithAlphaC(block_part1: uint32, block_part2: uint32, img: uint8_ptr, alpha: uint8_ptr, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
+function decompressBlockDifferentialWithAlphaC(block_part1: uint32, block_part2: uint32, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
 {
 	
 	let avg_color: uint8[3];
@@ -1389,7 +1373,7 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint32, block_part2:
 		}
 	}
 }
-function decompressBlockDifferentialWithAlpha(block_part1: uint32, block_part2: uint32, img: uint8_ptr, alpha: uint8_ptr, width: int, height: int, startx: int, starty: int): void
+function decompressBlockDifferentialWithAlpha(block_part1: uint32, block_part2: uint32, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockDifferentialWithAlphaC(block_part1, block_part2, img, alpha, width, height, startx, starty, 3);
 }
@@ -1397,7 +1381,7 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint32, block_part2: 
 
 // similar to regular decompression, but alpha channel is set to 0 if pixel index is 2, otherwise 255.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB59TAlphaC(block_part1: uint32, block_part2: uint32, img: uint8_ptr, alpha: uint8_ptr, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
+function decompressBlockTHUMB59TAlphaC(block_part1: uint32, block_part2: uint32, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
 {
 
 	let colorsRGB444: uint8[2][3];
@@ -1433,7 +1417,7 @@ function decompressBlockTHUMB59TAlphaC(block_part1: uint32, block_part2: uint32,
 
 	// Extend the two colors to RGB888	
 	decompressColor(R_BITS59T, G_BITS59T, B_BITS59T, colorsRGB444, colors);	
-	calculatePaintColors59T(distance, Pattern.PATTERN_T, colors, paint_colors);
+	calculatePaintColors59T(distance, colors, paint_colors);
 	
 	// Choose one of the four paint colors for each texel
 	for (let x:uint8 = 0; x < BLOCKWIDTH; ++x) 
@@ -1461,7 +1445,7 @@ function decompressBlockTHUMB59TAlphaC(block_part1: uint32, block_part2: uint32,
 		}
 	}
 }
-function decompressBlockTHUMB59TAlpha(block_part1: uint32, block_part2: uint32, img: uint8_ptr, alpha: uint8_ptr, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB59TAlpha(block_part1: uint32, block_part2: uint32, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockTHUMB59TAlphaC(block_part1, block_part2, img, alpha, width, height, startx, starty, 3);
 }
@@ -1469,7 +1453,7 @@ function decompressBlockTHUMB59TAlpha(block_part1: uint32, block_part2: uint32, 
 
 // Decompress an H-mode block with alpha
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB58HAlphaC(block_part1: uint32, block_part2: uint32, img: uint8_ptr, alpha: uint8_ptr, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
+function decompressBlockTHUMB58HAlphaC(block_part1: uint32, block_part2: uint32, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
 {
 	let col0: uint32;
 	let col1: uint32;
@@ -1516,7 +1500,7 @@ function decompressBlockTHUMB58HAlphaC(block_part1: uint32, block_part2: uint32,
 	// Extend the two colors to RGB888	
 	decompressColor(R_BITS58H, G_BITS58H, B_BITS58H, colorsRGB444, colors);	
 	
-	calculatePaintColors58H(distance, Pattern.PATTERN_H, colors, paint_colors);
+	calculatePaintColors58H(distance, colors, paint_colors);
 	
 	// Choose one of the four paint colors for each texel
 	for (let x:uint8 = 0; x < BLOCKWIDTH; ++x) 
@@ -1545,13 +1529,13 @@ function decompressBlockTHUMB58HAlphaC(block_part1: uint32, block_part2: uint32,
 		}
 	}
 }
-function decompressBlockTHUMB58HAlpha(block_part1: uint32, block_part2: uint32, img: uint8_ptr, alpha: uint8_ptr, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB58HAlpha(block_part1: uint32, block_part2: uint32, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockTHUMB58HAlphaC(block_part1, block_part2, img, alpha, width, height, startx, starty, 3);
 }
 // Decompression function for ETC2_RGBA1 format.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockETC21BitAlphaC(block_part1: uint32, block_part2: uint32, img: uint8_ptr, alphaimg: uint8_ptr, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
+function decompressBlockETC21BitAlphaC(block_part1: uint32, block_part2: uint32, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
 {
 	let diffbit: int;
 	let color1: int8[3];
@@ -1680,7 +1664,7 @@ function decompressBlockETC21BitAlphaC(block_part1: uint32, block_part2: uint32,
 			decompressBlockDifferentialWithAlphaC(block_part1, block_part2, img,alphaimg, width, height, startx, starty, channelsRGB);
 	}
 }
-function decompressBlockETC21BitAlpha(block_part1: uint32, block_part2: uint32, img: uint8_ptr, alphaimg: uint8_ptr, width: int, height: int, startx: int, starty: int): void
+function decompressBlockETC21BitAlpha(block_part1: uint32, block_part2: uint32, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockETC21BitAlphaC(block_part1, block_part2, img, alphaimg, width, height, startx, starty, 3);
 }
@@ -1714,7 +1698,7 @@ function clamp(val: int): int
 // However, a hardware decoder can share gates between the two formats as explained
 // in the specification under GL_COMPRESSED_R11_EAC.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockAlphaC(data: uint8_ptr, img: uint8_ptr, width: int, height: int, ix: int, iy: int, channels: int): void
+function decompressBlockAlphaC(data: Uint8Array, img: Uint8Array, width: int, height: int, ix: int, iy: int, channels: int): void
 {
 	const alpha: int = data[0];
 	const table: int = data[1];
@@ -1742,7 +1726,7 @@ function decompressBlockAlphaC(data: uint8_ptr, img: uint8_ptr, width: int, heig
 		}
 	}
 }
-function decompressBlockAlpha(data: uint8_ptr, img: uint8_ptr, width: int, height: int, ix: int, iy: int): void
+function decompressBlockAlpha(data: Uint8Array, img: Uint8Array, width: int, height: int, ix: int, iy: int): void
 {
   decompressBlockAlphaC(data, img, width, height, ix, iy, 1);
 }
@@ -1837,7 +1821,7 @@ function get16bits11bits(base: int, table: int, mul: int, index: int): uint16
 
 // Decompresses a block using one of the GL_COMPRESSED_R11_EAC or GL_COMPRESSED_SIGNED_R11_EAC-formats
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockAlpha16bitC(data: uint8_ptr, img: uint8_ptr, width: int, height: int, ix: int, iy: int, channels: int): void
+function decompressBlockAlpha16bitC(data: Uint8Array, img: Uint8Array, width: int, height: int, ix: int, iy: int, channels: int): void
 {
 	let alpha: int = data[0];
 	let table: int = data[1];
@@ -1846,7 +1830,8 @@ function decompressBlockAlpha16bitC(data: uint8_ptr, img: uint8_ptr, width: int,
 	{
 		//if we have a signed format, the base value is given as a signed byte. We convert it to (0-255) here,
 		//so more code can be shared with the unsigned mode.
-		alpha = *((int8_ptr)(&data[0]));
+		const memView = new DataView(data.buffer, data.byteOffset, data.byteLength);
+		alpha = memView.getInt8(0);
 		alpha = alpha+128;
 	}
 
@@ -1871,13 +1856,14 @@ function decompressBlockAlpha16bitC(data: uint8_ptr, img: uint8_ptr, width: int,
 			}
 			const windex: int = channels*(2*(ix+x+(iy+y)*width));
 if (PGMOUT) {
+			const memView = new DataView(img.buffer, img.byteOffset, img.byteLength);
 			if (formatSigned)
 			{
-				*(int16_ptr)&img[windex] = get16bits11signed(alpha,(table%16),(table/16),index);
+				memView.setInt16(windex, get16bits11signed(alpha,(table%16),(table/16),index), true);
 			}
 			else
 			{
-				*(uint16_ptr)&img[windex] = get16bits11bits(alpha,(table%16),(table/16),index);
+				memView.setUint16(windex, get16bits11bits(alpha,(table%16),(table/16),index), true);
 			}
 } else {
 			//make data compatible with the .pgm format. See the comment in compressBlockAlpha16() for details.
@@ -1900,7 +1886,7 @@ if (PGMOUT) {
 	}			
 }
 
-function decompressBlockAlpha16bit(data: uint8_ptr, img: uint8_ptr, width: int, height: int, ix: int, iy: int): void
+function decompressBlockAlpha16bit(data: Uint8Array, img: Uint8Array, width: int, height: int, ix: int, iy: int): void
 {
   decompressBlockAlpha16bitC(data, img, width, height, ix, iy, 1);
 }
