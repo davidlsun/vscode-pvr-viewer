@@ -204,9 +204,9 @@ const RGB = 3;
 // Helper Macros
 const SATURATE = (x: int): uint8 => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
 
-const RED_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[RGB*(y*width+x)+0] = value; };
-const GRN_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[RGB*(y*width+x)+1] = value; };
-const BLU_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[RGB*(y*width+x)+2] = value; };
+const RED_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[(y*width+x)*RGB+R] = value; };
+const GRN_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[(y*width+x)*RGB+G] = value; };
+const BLU_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[(y*width+x)*RGB+B] = value; };
 
 // Global variables
 const PGMOUT = true;
@@ -538,13 +538,12 @@ function decompressBlockTHUMB59Tc(block_part1: uint, block_part2: uint, img: Uin
     const block_mask = Array<Uint8Array>(BLOCK_WIDTH).fill(new Uint8Array(BLOCK_HEIGHT));
     for (let x: uint8 = 0; x < BLOCK_WIDTH; x++) {
         for (let y: uint8 = 0; y < BLOCK_HEIGHT; y++) {
-            //block_mask[x][y] = GETBITSLO(block_part2,2,31-(y*4+x)*2);
-            block_mask[x][y]  = GETBITSLO(block_part2,1,(y+x*4)+16) << 1;
-            block_mask[x][y] |= GETBITSLO(block_part2,1,(y+x*4));
+            block_mask[x][y]  = GETBITSLO(block_part2, 1, (y+x*4) + 16) << 1;
+            block_mask[x][y] |= GETBITSLO(block_part2, 1, (y+x*4));
 
-            img[RGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]);
-            img[RGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]);
-            img[RGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]);
+            img[((starty+y)*width+startx+x)*RGB+R] = SATURATE(paint_colors[block_mask[x][y]][R]);
+            img[((starty+y)*width+startx+x)*RGB+G] = SATURATE(paint_colors[block_mask[x][y]][G]);
+            img[((starty+y)*width+startx+x)*RGB+B] = SATURATE(paint_colors[block_mask[x][y]][B]);
         }
     }
 }
@@ -624,13 +623,12 @@ function decompressBlockTHUMB58Hc(block_part1: uint, block_part2: uint, img: Uin
     const block_mask = Array<Uint8Array>(BLOCK_WIDTH).fill(new Uint8Array(BLOCK_HEIGHT));
     for (let x: uint8 = 0; x < BLOCK_WIDTH; x++) {
         for (let y: uint8 = 0; y < BLOCK_HEIGHT; y++) {
-            //block_mask[x][y] = GETBITSLO(block_part2,2,31-(y*4+x)*2);
-            block_mask[x][y]  = GETBITSLO(block_part2,1,(y+x*4)+16) << 1;
-            block_mask[x][y] |= GETBITSLO(block_part2,1,(y+x*4));
+            block_mask[x][y]  = GETBITSLO(block_part2, 1, (y+x*4) + 16) << 1;
+            block_mask[x][y] |= GETBITSLO(block_part2, 1, (y+x*4));
 
-            img[RGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]);
-            img[RGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]);
-            img[RGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]);
+            img[((starty+y)*width+startx+x)*RGB+R] = SATURATE(paint_colors[block_mask[x][y]][R]);
+            img[((starty+y)*width+startx+x)*RGB+G] = SATURATE(paint_colors[block_mask[x][y]][G]);
+            img[((starty+y)*width+startx+x)*RGB+B] = SATURATE(paint_colors[block_mask[x][y]][B]);
         }
     }
 }
@@ -672,11 +670,11 @@ function decompressBlockPlanar57c(compressed57_1: uint, compressed57_2: uint, im
     colorV[G] = (colorV[G] << 1) | (colorV[G] >> 6);
     colorV[B] = (colorV[B] << 2) | (colorV[B] >> 4);
 
-    for (let bx: int = 0; bx < BLOCK_WIDTH; bx++) {
-        for (let by: int = 0; by < BLOCK_HEIGHT; by++) {
-            img[RGB*width*(starty+by) + RGB*(startx+bx) + R] = SATURATE((bx*(colorH[R]-colorO[R]) + by*(colorV[R]-colorO[R]) + 4*colorO[R] + 2) >> 2);
-            img[RGB*width*(starty+by) + RGB*(startx+bx) + G] = SATURATE((bx*(colorH[G]-colorO[G]) + by*(colorV[G]-colorO[G]) + 4*colorO[G] + 2) >> 2);
-            img[RGB*width*(starty+by) + RGB*(startx+bx) + B] = SATURATE((bx*(colorH[B]-colorO[B]) + by*(colorV[B]-colorO[B]) + 4*colorO[B] + 2) >> 2);
+    for (let x: int = 0; x < BLOCK_WIDTH; x++) {
+        for (let y: int = 0; y < BLOCK_HEIGHT; y++) {
+            img[((starty+y)*width+startx+x)*RGB+R] = SATURATE((x*(colorH[R]-colorO[R]) + y*(colorV[R]-colorO[R]) + 4*colorO[R] + 2) >> 2);
+            img[((starty+y)*width+startx+x)*RGB+G] = SATURATE((x*(colorH[G]-colorO[G]) + y*(colorV[G]-colorO[G]) + 4*colorO[G] + 2) >> 2);
+            img[((starty+y)*width+startx+x)*RGB+B] = SATURATE((x*(colorH[B]-colorO[B]) + y*(colorV[B]-colorO[B]) + 4*colorO[B] + 2) >> 2);
         }
     }
 }
@@ -725,9 +723,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[R]+compressParams[table][index]));
-                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[G]+compressParams[table][index]));
-                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[B]+compressParams[table][index]));
+                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
+                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
+                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
                 }
             }
         }
@@ -742,9 +740,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[R]+compressParams[table][index]));
-                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[G]+compressParams[table][index]));
-                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[B]+compressParams[table][index]));
+                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
+                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
+                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
                 }
                 shift += 2;
             }
@@ -777,9 +775,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[R]+compressParams[table][index]));
-                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[G]+compressParams[table][index]));
-                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[B]+compressParams[table][index]));
+                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
+                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
+                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
                 }
             }
         }
@@ -794,9 +792,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[R]+compressParams[table][index]));
-                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[G]+compressParams[table][index]));
-                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[B]+compressParams[table][index]));
+                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
+                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
+                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
                 }
                 shift += 2;
             }
@@ -848,9 +846,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[R]+compressParams[table][index]));
-                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[G]+compressParams[table][index]));
-                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[B]+compressParams[table][index]));
+                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
+                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
+                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
                 }
             }
         }
@@ -865,9 +863,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[R]+compressParams[table][index]));
-                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[G]+compressParams[table][index]));
-                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[B]+compressParams[table][index]));
+                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
+                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
+                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
                 }
                 shift += 2;
             }
@@ -913,9 +911,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[R]+compressParams[table][index]));
-                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[G]+compressParams[table][index]));
-                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[B]+compressParams[table][index]));
+                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
+                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
+                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
                 }
             }
         }
@@ -930,9 +928,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img,width,x,y, SATURATE(avg_color[R]+compressParams[table][index]));
-                    GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[G]+compressParams[table][index]));
-                    BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[B]+compressParams[table][index]));
+                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
+                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
+                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
                 }
                 shift += 2;
             }
@@ -1044,15 +1042,15 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
                     mod = 0;
                 }
                 
-                RED_CHANNEL(img,width,x,y, SATURATE(avg_color[R]+mod));
-                GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[G]+mod));
-                BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[B]+mod));
+                RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + mod));
+                GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + mod));
+                BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + mod));
 
                 if (!diffbit && index === 1) {
+                    RED_CHANNEL(img, width, x, y, 0);
+                    GRN_CHANNEL(img, width, x, y, 0);
+                    BLU_CHANNEL(img, width, x, y, 0);
                     alpha[y*width+x] = 0;
-                    RED_CHANNEL(img,width,x,y, 0);
-                    GRN_CHANNEL(img,width,x,y, 0);
-                    BLU_CHANNEL(img,width,x,y, 0);
                 } else {
                     alpha[y*width+x] = 255;
                 }
@@ -1075,15 +1073,15 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
                     mod = 0;
                 }
 
-                RED_CHANNEL(img,width,x,y, SATURATE(avg_color[R]+mod));
-                GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[G]+mod));
-                BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[B]+mod));
+                RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + mod));
+                GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + mod));
+                BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + mod));
 
                 if (!diffbit && index === 1) {
+                    RED_CHANNEL(img, width, x, y, 0);
+                    GRN_CHANNEL(img, width, x, y, 0);
+                    BLU_CHANNEL(img, width, x, y, 0);
                     alpha[y*width+x] = 0;
-                    RED_CHANNEL(img,width,x,y, 0);
-                    GRN_CHANNEL(img,width,x,y, 0);
-                    BLU_CHANNEL(img,width,x,y, 0);
                 } else {
                     alpha[y*width+x] = 255;
                 }
@@ -1137,15 +1135,15 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
                     mod = 0;
                 }
                 
-                RED_CHANNEL(img,width,x,y, SATURATE(avg_color[R]+mod));
-                GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[G]+mod));
-                BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[B]+mod));
+                RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + mod));
+                GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + mod));
+                BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + mod));
 
                 if (!diffbit && index === 1) {
+                    RED_CHANNEL(img, width, x, y, 0);
+                    GRN_CHANNEL(img, width, x, y, 0);
+                    BLU_CHANNEL(img, width, x, y, 0);
                     alpha[y*width+x] = 0;
-                    RED_CHANNEL(img,width,x,y, 0);
-                    GRN_CHANNEL(img,width,x,y, 0);
-                    BLU_CHANNEL(img,width,x,y, 0);
                 } else {
                     alpha[y*width+x] = 255;
                 }
@@ -1168,15 +1166,15 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
                     mod = 0;
                 }
                 
-                RED_CHANNEL(img,width,x,y, SATURATE(avg_color[R]+mod));
-                GRN_CHANNEL(img,width,x,y, SATURATE(avg_color[G]+mod));
-                BLU_CHANNEL(img,width,x,y, SATURATE(avg_color[B]+mod));
+                RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + mod));
+                GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + mod));
+                BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + mod));
 
                 if (!diffbit && index === 1) {
+                    RED_CHANNEL(img, width, x, y, 0);
+                    GRN_CHANNEL(img, width, x, y, 0);
+                    BLU_CHANNEL(img, width, x, y, 0);
                     alpha[y*width+x] = 0;
-                    RED_CHANNEL(img,width,x,y, 0);
-                    GRN_CHANNEL(img,width,x,y, 0);
-                    BLU_CHANNEL(img,width,x,y, 0);
                 } else {
                     alpha[y*width+x] = 255;
                 }
@@ -1214,21 +1212,20 @@ function decompressBlockTHUMB59TAlphaC(block_part1: uint, block_part2: uint, img
     const block_mask = Array<Uint8Array>(BLOCK_WIDTH).fill(new Uint8Array(BLOCK_HEIGHT));
     for (let x: uint8 = 0; x < BLOCK_WIDTH; x++) {
         for (let y: uint8 = 0; y < BLOCK_HEIGHT; y++) {
-            //block_mask[x][y] = GETBITSLO(block_part2,2,31-(y*4+x)*2);
-            block_mask[x][y]  = GETBITSLO(block_part2,1,(y+x*4)+16) << 1;
-            block_mask[x][y] |= GETBITSLO(block_part2,1,(y+x*4));
+            block_mask[x][y]  = GETBITSLO(block_part2, 1, (y+x*4) + 16) << 1;
+            block_mask[x][y] |= GETBITSLO(block_part2, 1, (y+x*4));
 
-            img[RGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]);
-            img[RGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]);
-            img[RGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]);
+            img[((starty+y)*width+startx+x)*RGB+R] = SATURATE(paint_colors[block_mask[x][y]][R]);
+            img[((starty+y)*width+startx+x)*RGB+G] = SATURATE(paint_colors[block_mask[x][y]][G]);
+            img[((starty+y)*width+startx+x)*RGB+B] = SATURATE(paint_colors[block_mask[x][y]][B]);
 
             if (block_mask[x][y] === 2) {
-                alpha[x+startx+(y+starty)*width] = 0;
-                img[RGB*((starty+y)*width+startx+x)+R] = 0;
-                img[RGB*((starty+y)*width+startx+x)+G] = 0;
-                img[RGB*((starty+y)*width+startx+x)+B] = 0;
+                img[((starty+y)*width+startx+x)*RGB+R] = 0;
+                img[((starty+y)*width+startx+x)*RGB+G] = 0;
+                img[((starty+y)*width+startx+x)*RGB+B] = 0;
+                alpha[(starty+y)*width+startx+x] = 0;
             } else {
-                alpha[x+startx+(y+starty)*width] = 255;
+                alpha[(starty+y)*width+startx+x] = 255;
             }
         }
     }
@@ -1267,21 +1264,20 @@ function decompressBlockTHUMB58HAlphaC(block_part1: uint, block_part2: uint, img
     const block_mask = Array<Uint8Array>(BLOCK_WIDTH).fill(new Uint8Array(BLOCK_HEIGHT));
     for (let x: uint8 = 0; x < BLOCK_WIDTH; x++) {
         for (let y: uint8 = 0; y < BLOCK_HEIGHT; y++) {
-            //block_mask[x][y] = GETBITSLO(block_part2,2,31-(y*4+x)*2);
-            block_mask[x][y]  = GETBITSLO(block_part2,1,(y+x*4)+16) << 1;
-            block_mask[x][y] |= GETBITSLO(block_part2,1,(y+x*4));
+            block_mask[x][y]  = GETBITSLO(block_part2, 1, (y+x*4) + 16) << 1;
+            block_mask[x][y] |= GETBITSLO(block_part2, 1, (y+x*4));
 
-            img[RGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]);
-            img[RGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]);
-            img[RGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]);
+            img[((starty+y)*width+startx+x)*RGB+R] = SATURATE(paint_colors[block_mask[x][y]][R]);
+            img[((starty+y)*width+startx+x)*RGB+G] = SATURATE(paint_colors[block_mask[x][y]][G]);
+            img[((starty+y)*width+startx+x)*RGB+B] = SATURATE(paint_colors[block_mask[x][y]][B]);
 
             if (block_mask[x][y] === 2) {
-                alpha[x+startx+(y+starty)*width] = 0;
-                img[RGB*((starty+y)*width+startx+x)+R] = 0;
-                img[RGB*((starty+y)*width+startx+x)+G] = 0;
-                img[RGB*((starty+y)*width+startx+x)+B] = 0;
+                img[((starty+y)*width+startx+x)*RGB+R] = 0;
+                img[((starty+y)*width+startx+x)*RGB+G] = 0;
+                img[((starty+y)*width+startx+x)*RGB+B] = 0;
+                alpha[(starty+y)*width+startx+x] = 0;
             } else {
-                alpha[x+startx+(y+starty)*width] = 255;
+                alpha[(starty+y)*width+startx+x] = 255;
             }
         }
     }
