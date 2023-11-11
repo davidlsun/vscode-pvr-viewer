@@ -174,18 +174,17 @@ type uint8 = number;
 type int16 = number;
 type uint16 = number;
 type int = number;
-type uint32 = number;
-type FILE_ptr = FILE*;
+type uint = number;
 
 // Macros to help with bit extraction/insertion
-const SHIFT = (size, startpos) => ((startpos)-(size)+1);
-const MASK = (size, startpos) => (((2<<(size-1))-1) << SHIFT(size,startpos));
-const PUTBITS = (dest, data, size, startpos) => {dest = ((dest & ~MASK(size, startpos)) | ((data << SHIFT(size, startpos)) & MASK(size,startpos)));}; // BUG: dest won't get updated
-const SHIFTHIGH = (size, startpos) => (((startpos)-32)-(size)+1);
-const MASKHIGH = (size, startpos) => (((1<<(size))-1) << SHIFTHIGH(size,startpos));
-const PUTBITSHIGH = (dest, data, size, startpos) => {dest = ((dest & ~MASKHIGH(size, startpos)) | ((data << SHIFTHIGH(size, startpos)) & MASKHIGH(size,startpos)));}; // BUG: dest won't get updated
-const GETBITS = (source, size, startpos) => (( (source) >> ((startpos)-(size)+1) ) & ((1<<(size)) -1));
-const GETBITSHIGH = (source, size, startpos) => (( (source) >> (((startpos)-32)-(size)+1) ) & ((1<<(size)) -1));
+const SHIFT = (size: uint, startpos: uint): uint => ((startpos)-(size)+1);
+const MASK = (size: uint, startpos: uint): uint => (((2<<(size-1))-1) << SHIFT(size,startpos));
+const GET_PUTBITS = (dest: uint, data: uint, size: uint, startpos: uint): uint => ((dest & ~MASK(size, startpos)) | ((data << SHIFT(size, startpos)) & MASK(size,startpos)));
+const SHIFTHIGH = (size: uint, startpos: uint): uint => (((startpos)-32)-(size)+1);
+const MASKHIGH = (size: uint, startpos: uint): uint => (((1<<(size))-1) << SHIFTHIGH(size,startpos));
+const GET_PUTBITSHIGH = (dest: uint, data: uint, size: uint, startpos: uint): uint => ((dest & ~MASKHIGH(size, startpos)) | ((data << SHIFTHIGH(size, startpos)) & MASKHIGH(size,startpos)));
+const GETBITS = (source: uint, size: uint, startpos: uint): uint => (( (source) >> ((startpos)-(size)+1) ) & ((1<<(size)) -1));
+const GETBITSHIGH = (source: uint, size: uint, startpos: uint): uint => (( (source) >> (((startpos)-32)-(size)+1) ) & ((1<<(size)) -1));
 const PGMOUT = true;
 // Thumb macros and definitions
 const R_BITS59T = 4;
@@ -194,7 +193,7 @@ const B_BITS59T = 4;
 const R_BITS58H = 4;
 const G_BITS58H = 4;
 const B_BITS58H = 4;
-const MAXIMUM_ERROR = (255*255*16*1000);
+//const MAXIMUM_ERROR = (255*255*16*1000);
 const R = 0;
 const G = 1;
 const B = 2;
@@ -205,18 +204,18 @@ const TABLE_BITS_59T = 3;
 const TABLE_BITS_58H = 3;
 
 // Helper Macros
-const CLAMP = <T>(ll:T,x:T,ul:T) => (((x)<(ll)) ? (ll) : (((x)>(ul)) ? (ul) : (x)));
+const SATURATE = (x: number): uint8 => ((x<0) ? 0 : ((x>255) ? 255 : x));
 //const JAS_ROUND = (x) => (((x) < 0.0 ) ? ((int)((x)-0.5)) : ((int)((x)+0.5)));
 
-const SET_RED_CHANNEL = (img,width,x,y,channels,value) => {return img[channels*(y*width+x)+0] = value;};
-const SET_GREEN_CHANNEL = (img,width,x,y,channels,value) => {return img[channels*(y*width+x)+1] = value;};
-const SET_BLUE_CHANNEL = (img,width,x,y,channels,value) => {return img[channels*(y*width+x)+2] = value;};
-const SET_ALPHA_CHANNEL = (img,width,x,y,channels,value) => {return img[channels*(y*width+x)+3] = value;};
+const SET_RED_CHANNEL   = (img: Uint8Array, width: int, x: int, y: int, channels: int, value: uint8): uint8 => (img[channels*(y*width+x)+0] = value);
+const SET_GREEN_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, channels: int, value: uint8): uint8 => (img[channels*(y*width+x)+1] = value);
+const SET_BLUE_CHANNEL  = (img: Uint8Array, width: int, x: int, y: int, channels: int, value: uint8): uint8 => (img[channels*(y*width+x)+2] = value);
+//const SET_ALPHA_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, channels: int, value: uint8): uint8 => (img[channels*(y*width+x)+3] = value);
 
 
 // Global tables
-/*static*/ const table59T = Uint8Array.from([3,6,11,16,23,32,41,64]);  // 3-bit table for the 59 bit T-mode
-/*static*/ const table58H = Uint8Array.from([3,6,11,16,23,32,41,64]);  // 3-bit table for the 58 bit H-mode
+/*static*/ const table59T = Uint8Array.from([3, 6, 11, 16, 23, 32, 41, 64]);  // 3-bit table for the 59 bit T-mode
+/*static*/ const table58H = Uint8Array.from([3, 6, 11, 16, 23, 32, 41, 64]);  // 3-bit table for the 58 bit H-mode
 /*static*/ const compressParams = [
 	Int32Array.from([-8, -2,  2, 8]),
 	Int32Array.from([-8, -2,  2, 8]),
@@ -261,12 +260,6 @@ const alphaBase = [
 // Global variables
 const formatSigned = false;
 
-// Enums
-enum Pattern {
-	PATTERN_H = 0, 
-    PATTERN_T = 1
-}
-
 
 // Code used to create the valtab
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
@@ -304,56 +297,12 @@ function setupAlphaTable(): void
 	}
 }
 
-// Read a word in big endian style
-// NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function read_big_endian_2byte_word(blockadr: Uint16Array, f: FILE_ptr): void
-{
-	let bytes: uint8[2];
-	let block: uint16;
-
-	fread(&bytes[0], 1, 1, f);
-	fread(&bytes[1], 1, 1, f);
-
-	block = 0;
-	block |= bytes[0];
-	block = block << 8;
-	block |= bytes[1];
-
-	blockadr[0] = block;
-}
-
-// Read a word in big endian style
-// NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function read_big_endian_4byte_word(blockadr: Uint32Array, f: FILE_ptr): void
-{
-	let bytes: uint8[4];
-	let block: uint32;
-
-	fread(&bytes[0], 1, 1, f);
-	fread(&bytes[1], 1, 1, f);
-	fread(&bytes[2], 1, 1, f);
-	fread(&bytes[3], 1, 1, f);
-
-	block = 0;
-	block |= bytes[0];
-	block = block << 8;
-	block |= bytes[1];
-	block = block << 8;
-	block |= bytes[2];
-	block = block << 8;
-	block |= bytes[3];
-
-	blockadr[0] = block;
-}
-
 // The format stores the bits for the three extra modes in a roundabout way to be able to
 // fit them without increasing the bit rate. This function converts them into something
 // that is easier to work with. 
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function unstuff57bits(planar_word1: uint32, planar_word2: uint32): uint32[]
+function unstuff57bits(planar_word1: uint, planar_word2: uint): uint[]
 {
-	let planar57_word1: uint32;
-	let planar57_word2: uint32;
 	// Get bits from twotimer configuration for 57 bits
 	// 
 	// Go to this bit layout:
@@ -386,48 +335,36 @@ function unstuff57bits(planar_word1: uint32, planar_word2: uint32): uint32[]
 	//     | R1' (5 bits) | dR2    | G1' (5 bits) | dG2    | B1' (5 bits) | dB2    | cw 1   | cw 2   |bit |bit |
 	//      ---------------------------------------------------------------------------------------------------
 
-	let RO: uint8;
-	let GO1: uint8;
-	let GO2: uint8;
-	let BO1: uint8;
-	let BO2: uint8;
-	let BO3: uint8;
-	let RH1: uint8;
-	let RH2: uint8;
-	let GH: uint8;
-	let BH: uint8;
-	let RV: uint8;
-	let GV: uint8;
-	let BV: uint8;
+	const RO:  uint8 = GETBITSHIGH( planar_word1, 6, 62);
+	const GO1: uint8 = GETBITSHIGH( planar_word1, 1, 56);
+	const GO2: uint8 = GETBITSHIGH( planar_word1, 6, 54);
+	const BO1: uint8 = GETBITSHIGH( planar_word1, 1, 48);
+	const BO2: uint8 = GETBITSHIGH( planar_word1, 2, 44);
+	const BO3: uint8 = GETBITSHIGH( planar_word1, 3, 41);
+	const RH1: uint8 = GETBITSHIGH( planar_word1, 5, 38);
+	const RH2: uint8 = GETBITSHIGH( planar_word1, 1, 32);
+	const GH:  uint8 = GETBITS(     planar_word2, 7, 31);
+	const BH:  uint8 = GETBITS(     planar_word2, 6, 24);
+	const RV:  uint8 = GETBITS(     planar_word2, 6, 18);
+	const GV:  uint8 = GETBITS(     planar_word2, 7, 12);
+	const BV:  uint8 = GETBITS(     planar_word2, 6,  5);
 
-	RO  = GETBITSHIGH( planar_word1, 6, 62);
-	GO1 = GETBITSHIGH( planar_word1, 1, 56);
-	GO2 = GETBITSHIGH( planar_word1, 6, 54);
-	BO1 = GETBITSHIGH( planar_word1, 1, 48);
-	BO2 = GETBITSHIGH( planar_word1, 2, 44);
-	BO3 = GETBITSHIGH( planar_word1, 3, 41);
-	RH1 = GETBITSHIGH( planar_word1, 5, 38);
-	RH2 = GETBITSHIGH( planar_word1, 1, 32);
-	GH  = GETBITS(     planar_word2, 7, 31);
-	BH  = GETBITS(     planar_word2, 6, 24);
-	RV  = GETBITS(     planar_word2, 6, 18);
-	GV  = GETBITS(     planar_word2, 7, 12);
-	BV  = GETBITS(     planar_word2, 6,  5);
+	let planar57_word1: uint = 0;
+	planar57_word1 = GET_PUTBITSHIGH( planar57_word1, RO,  6, 63);
+	planar57_word1 = GET_PUTBITSHIGH( planar57_word1, GO1, 1, 57);
+	planar57_word1 = GET_PUTBITSHIGH( planar57_word1, GO2, 6, 56);
+	planar57_word1 = GET_PUTBITSHIGH( planar57_word1, BO1, 1, 50);
+	planar57_word1 = GET_PUTBITSHIGH( planar57_word1, BO2, 2, 49);
+	planar57_word1 = GET_PUTBITSHIGH( planar57_word1, BO3, 3, 47);
+	planar57_word1 = GET_PUTBITSHIGH( planar57_word1, RH1, 5, 44);
+	planar57_word1 = GET_PUTBITSHIGH( planar57_word1, RH2, 1, 39);
+	planar57_word1 = GET_PUTBITSHIGH( planar57_word1, GH,  7, 38);
 
-	planar57_word1 = 0; planar57_word2 = 0;
-	PUTBITSHIGH( planar57_word1, RO,  6, 63);
-	PUTBITSHIGH( planar57_word1, GO1, 1, 57);
-	PUTBITSHIGH( planar57_word1, GO2, 6, 56);
-	PUTBITSHIGH( planar57_word1, BO1, 1, 50);
-	PUTBITSHIGH( planar57_word1, BO2, 2, 49);
-	PUTBITSHIGH( planar57_word1, BO3, 3, 47);
-	PUTBITSHIGH( planar57_word1, RH1, 5, 44);
-	PUTBITSHIGH( planar57_word1, RH2, 1, 39);
-	PUTBITSHIGH( planar57_word1, GH, 7, 38);
-	PUTBITS(     planar57_word2, BH, 6, 31);
-	PUTBITS(     planar57_word2, RV, 6, 25);
-	PUTBITS(     planar57_word2, GV, 7, 19);
-	PUTBITS(     planar57_word2, BV, 6, 12);
+	let planar57_word2: uint = 0;
+	planar57_word2 = GET_PUTBITS( planar57_word2, BH, 6, 31);
+	planar57_word2 = GET_PUTBITS( planar57_word2, RV, 6, 25);
+	planar57_word2 = GET_PUTBITS( planar57_word2, GV, 7, 19);
+	planar57_word2 = GET_PUTBITS( planar57_word2, BV, 6, 12);
 
 	return [planar57_word1, planar57_word2];
 }
@@ -436,10 +373,8 @@ function unstuff57bits(planar_word1: uint32, planar_word2: uint32): uint32[]
 // fit them without increasing the bit rate. This function converts them into something
 // that is easier to work with. 
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function unstuff58bits(thumbH_word1: uint32, thumbH_word2: uint32): uint32[]
+function unstuff58bits(thumbH_word1: uint, thumbH_word2: uint): uint[]
 {
-	let thumbH58_word1: uint32;
-	let thumbH58_word2: uint32;
 	// Go to this layout:
 	//
 	//     |63 62 61 60 59 58|57 56 55 54 53 52 51|50 49|48 47 46 45 44 43 42 41 40 39 38 37 36 35 34 33|32   |
@@ -452,23 +387,19 @@ function unstuff58bits(thumbH_word1: uint32, thumbH_word2: uint32): uint32[]
 	//     |//|part0               |// // //|part1|//|part2                                          |df|part3|
 	//      --------------------------------------------------------------------------------------------------|
 
-	let part0: uint32;
-	let part1: uint32;
-	let part2: uint32;
-	let part3: uint32;
-
 	// move parts
-	part0 = GETBITSHIGH( thumbH_word1, 7, 62);
-	part1 = GETBITSHIGH( thumbH_word1, 2, 52);
-	part2 = GETBITSHIGH( thumbH_word1,16, 49);
-	part3 = GETBITSHIGH( thumbH_word1, 1, 32);
-	thumbH58_word1 = 0;
-	PUTBITSHIGH( thumbH58_word1, part0,  7, 57);
-	PUTBITSHIGH( thumbH58_word1, part1,  2, 50);
-	PUTBITSHIGH( thumbH58_word1, part2, 16, 48);
-	PUTBITSHIGH( thumbH58_word1, part3,  1, 32);
+	const part0: uint = GETBITSHIGH( thumbH_word1, 7, 62);
+	const part1: uint = GETBITSHIGH( thumbH_word1, 2, 52);
+	const part2: uint = GETBITSHIGH( thumbH_word1,16, 49);
+	const part3: uint = GETBITSHIGH( thumbH_word1, 1, 32);
 
-	thumbH58_word2 = thumbH_word2;
+	let thumbH58_word1: uint = 0;
+	thumbH58_word1 = GET_PUTBITSHIGH( thumbH58_word1, part0,  7, 57);
+	thumbH58_word1 = GET_PUTBITSHIGH( thumbH58_word1, part1,  2, 50);
+	thumbH58_word1 = GET_PUTBITSHIGH( thumbH58_word1, part2, 16, 48);
+	thumbH58_word1 = GET_PUTBITSHIGH( thumbH58_word1, part3,  1, 32);
+
+	const thumbH58_word2: uint = thumbH_word2;
 
 	return [thumbH58_word1, thumbH58_word2];
 }
@@ -477,10 +408,8 @@ function unstuff58bits(thumbH_word1: uint32, thumbH_word2: uint32): uint32[]
 // fit them without increasing the bit rate. This function converts them into something
 // that is easier to work with. 
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function unstuff59bits(thumbT_word1: uint32, thumbT_word2: uint32): uint32[]
+function unstuff59bits(thumbT_word1: uint, thumbT_word2: uint): uint[]
 {
-	let thumbT59_word1: uint32;
-	let thumbT59_word2: uint32;
 	// Get bits from twotimer configuration 59 bits. 
 	// 
 	// Go to this bit layout:
@@ -508,22 +437,20 @@ function unstuff59bits(thumbT_word1: uint32, thumbT_word2: uint32): uint32[]
 	//     | R1' (5 bits) | dR2    | G1' (5 bits) | dG2    | B1' (5 bits) | dB2    | cw 1   | cw 2   |bt|bt|
 	//      ------------------------------------------------------------------------------------------------
 
-	let R0a: uint8;
-
 	// Fix middle part
-	thumbT59_word1 = thumbT_word1 >> 1;
+	let thumbT59_word1: uint = thumbT_word1 >> 1;
 	// Fix db (lowest bit of d)
-	PUTBITSHIGH( thumbT59_word1, thumbT_word1,  1, 32);
+	thumbT59_word1 = GET_PUTBITSHIGH( thumbT59_word1, thumbT_word1,  1, 32);
 	// Fix R0a (top two bits of R0)
-	R0a = GETBITSHIGH( thumbT_word1, 2, 60);
-	PUTBITSHIGH( thumbT59_word1, R0a,  2, 58);
+	let R0a: uint8 = GETBITSHIGH( thumbT_word1, 2, 60);
+	thumbT59_word1 = GET_PUTBITSHIGH( thumbT59_word1, R0a,  2, 58);
 
 	// Zero top part (not needed)
-	PUTBITSHIGH( thumbT59_word1, 0,  5, 63);
+	thumbT59_word1 = GET_PUTBITSHIGH( thumbT59_word1, 0,  5, 63);
 
-	thumbT59_word2 = thumbT_word2;
+	const thumbT59_word2: uint = thumbT_word2;
 
-	return [ thumbT59_word1, thumbT59_word2 ];
+	return [thumbT59_word1, thumbT59_word2];
 }
 
 // The color bits are expanded to the full color
@@ -562,9 +489,9 @@ function calculatePaintColors59T(d: uint8, colors: uint8[2][3], possible_colors:
 	//////////////////////////////////////////////
 
 	// C4
-	possible_colors[3][R] = CLAMP(0,colors[1][R] - table59T[d],255);
-	possible_colors[3][G] = CLAMP(0,colors[1][G] - table59T[d],255);
-	possible_colors[3][B] = CLAMP(0,colors[1][B] - table59T[d],255);
+	possible_colors[3][R] = SATURATE(colors[1][R] - table59T[d]);
+	possible_colors[3][G] = SATURATE(colors[1][G] - table59T[d]);
+	possible_colors[3][B] = SATURATE(colors[1][B] - table59T[d]);
 	
 	// PATTERN_T
 	{
@@ -573,9 +500,9 @@ function calculatePaintColors59T(d: uint8, colors: uint8[2][3], possible_colors:
 		possible_colors[0][G] = colors[0][G];
 		possible_colors[0][B] = colors[0][B];
 		// C2
-		possible_colors[1][R] = CLAMP(0,colors[1][R] + table59T[d],255);
-		possible_colors[1][G] = CLAMP(0,colors[1][G] + table59T[d],255);
-		possible_colors[1][B] = CLAMP(0,colors[1][B] + table59T[d],255);
+		possible_colors[1][R] = SATURATE(colors[1][R] + table59T[d]);
+		possible_colors[1][G] = SATURATE(colors[1][G] + table59T[d]);
+		possible_colors[1][B] = SATURATE(colors[1][B] + table59T[d]);
 		// C1
 		possible_colors[2][R] = colors[1][R];
 		possible_colors[2][G] = colors[1][G];
@@ -591,7 +518,7 @@ function calculatePaintColors59T(d: uint8, colors: uint8[2][3], possible_colors:
 //|31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00|
 //|----------------------------------------index bits---------------------------------------------|
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB59Tc(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
+function decompressBlockTHUMB59Tc(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
 {
 	let colorsRGB444: uint8[2][3];
 	let colors: uint8[2][3];
@@ -622,17 +549,14 @@ function decompressBlockTHUMB59Tc(block_part1: uint32, block_part2: uint32, img:
 			//block_mask[x][y] = GETBITS(block_part2,2,31-(y*4+x)*2);
 			block_mask[x][y] = GETBITS(block_part2,1,(y+x*4)+16)<<1;
 			block_mask[x][y] |= GETBITS(block_part2,1,(y+x*4));
-			img[channels*((starty+y)*width+startx+x)+R] =
-				CLAMP(0,paint_colors[block_mask[x][y]][R],255); // RED
-			img[channels*((starty+y)*width+startx+x)+G] =
-				CLAMP(0,paint_colors[block_mask[x][y]][G],255); // GREEN
-			img[channels*((starty+y)*width+startx+x)+B] =
-				CLAMP(0,paint_colors[block_mask[x][y]][B],255); // BLUE
+			img[channels*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]); // RED
+			img[channels*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]); // GREEN
+			img[channels*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]); // BLUE
 		}
 	}
 }
 
-function decompressBlockTHUMB59T(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB59T(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockTHUMB59Tc(block_part1, block_part2, img, width, height, startx, starty, 3);
 }
@@ -656,33 +580,33 @@ function calculatePaintColors58H(d: uint8, colors: uint8[2][3], possible_colors:
 	//////////////////////////////////////////////
 
 	// C4
-	possible_colors[3][R] = CLAMP(0,colors[1][R] - table58H[d],255);
-	possible_colors[3][G] = CLAMP(0,colors[1][G] - table58H[d],255);
-	possible_colors[3][B] = CLAMP(0,colors[1][B] - table58H[d],255);
+	possible_colors[3][R] = SATURATE(colors[1][R] - table58H[d]);
+	possible_colors[3][G] = SATURATE(colors[1][G] - table58H[d]);
+	possible_colors[3][B] = SATURATE(colors[1][B] - table58H[d]);
 	
 	// PATTERN_H
 	{ 
 		// C1
-		possible_colors[0][R] = CLAMP(0,colors[0][R] + table58H[d],255);
-		possible_colors[0][G] = CLAMP(0,colors[0][G] + table58H[d],255);
-		possible_colors[0][B] = CLAMP(0,colors[0][B] + table58H[d],255);
+		possible_colors[0][R] = SATURATE(colors[0][R] + table58H[d]);
+		possible_colors[0][G] = SATURATE(colors[0][G] + table58H[d]);
+		possible_colors[0][B] = SATURATE(colors[0][B] + table58H[d]);
 		// C2
-		possible_colors[1][R] = CLAMP(0,colors[0][R] - table58H[d],255);
-		possible_colors[1][G] = CLAMP(0,colors[0][G] - table58H[d],255);
-		possible_colors[1][B] = CLAMP(0,colors[0][B] - table58H[d],255);
+		possible_colors[1][R] = SATURATE(colors[0][R] - table58H[d]);
+		possible_colors[1][G] = SATURATE(colors[0][G] - table58H[d]);
+		possible_colors[1][B] = SATURATE(colors[0][B] - table58H[d]);
 		// C3
-		possible_colors[2][R] = CLAMP(0,colors[1][R] + table58H[d],255);
-		possible_colors[2][G] = CLAMP(0,colors[1][G] + table58H[d],255);
-		possible_colors[2][B] = CLAMP(0,colors[1][B] + table58H[d],255);
+		possible_colors[2][R] = SATURATE(colors[1][R] + table58H[d]);
+		possible_colors[2][G] = SATURATE(colors[1][G] + table58H[d]);
+		possible_colors[2][B] = SATURATE(colors[1][B] + table58H[d]);
 	} 
 }
 
 // Decompress an H-mode block 
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB58Hc(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
+function decompressBlockTHUMB58Hc(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
 {
-	let col0: uint32;
-	let col1: uint32;
+	let col0: uint;
+	let col1: uint;
 	let colors: uint8[2][3];
 	let colorsRGB444: uint8[2][3];
 	let paint_colors: uint8[4][3];
@@ -722,23 +646,20 @@ function decompressBlockTHUMB58Hc(block_part1: uint32, block_part2: uint32, img:
 			//block_mask[x][y] = GETBITS(block_part2,2,31-(y*4+x)*2);
 			block_mask[x][y] = GETBITS(block_part2,1,(y+x*4)+16)<<1;
 			block_mask[x][y] |= GETBITS(block_part2,1,(y+x*4));
-			img[channels*((starty+y)*width+startx+x)+R] =
-				CLAMP(0,paint_colors[block_mask[x][y]][R],255); // RED
-			img[channels*((starty+y)*width+startx+x)+G] =
-				CLAMP(0,paint_colors[block_mask[x][y]][G],255); // GREEN
-			img[channels*((starty+y)*width+startx+x)+B] =
-				CLAMP(0,paint_colors[block_mask[x][y]][B],255); // BLUE
+			img[channels*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]); // RED
+			img[channels*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]); // GREEN
+			img[channels*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]); // BLUE
 		}
 	}
 }
-function decompressBlockTHUMB58H(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB58H(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockTHUMB58Hc(block_part1, block_part2, img, width, height, startx, starty, 3);
 }
 
 // Decompress the planar mode.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockPlanar57c(compressed57_1: uint32, compressed57_2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
+function decompressBlockPlanar57c(compressed57_1: uint, compressed57_2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
 {
 	let colorO: uint8[3];
 	let colorH: uint8[3];
@@ -773,25 +694,25 @@ function decompressBlockPlanar57c(compressed57_1: uint32, compressed57_2: uint32
 	{
 		for( yy=0; yy<4; yy++)
 		{
-			img[channels*width*(starty+yy) + channels*(startx+xx) + 0] = CLAMP(0, ((xx*(colorH[0]-colorO[0]) + yy*(colorV[0]-colorO[0]) + 4*colorO[0] + 2) >> 2),255);
-			img[channels*width*(starty+yy) + channels*(startx+xx) + 1] = CLAMP(0, ((xx*(colorH[1]-colorO[1]) + yy*(colorV[1]-colorO[1]) + 4*colorO[1] + 2) >> 2),255);
-			img[channels*width*(starty+yy) + channels*(startx+xx) + 2] = CLAMP(0, ((xx*(colorH[2]-colorO[2]) + yy*(colorV[2]-colorO[2]) + 4*colorO[2] + 2) >> 2),255);
+			img[channels*width*(starty+yy) + channels*(startx+xx) + 0] = SATURATE((xx*(colorH[0]-colorO[0]) + yy*(colorV[0]-colorO[0]) + 4*colorO[0] + 2) >> 2);
+			img[channels*width*(starty+yy) + channels*(startx+xx) + 1] = SATURATE((xx*(colorH[1]-colorO[1]) + yy*(colorV[1]-colorO[1]) + 4*colorO[1] + 2) >> 2);
+			img[channels*width*(starty+yy) + channels*(startx+xx) + 2] = SATURATE((xx*(colorH[2]-colorO[2]) + yy*(colorV[2]-colorO[2]) + 4*colorO[2] + 2) >> 2);
 
 			//Equivalent method
-			/*img[channels*width*(starty+yy) + channels*(startx+xx) + 0] = (int)CLAMP(0, JAS_ROUND((xx*(colorH[0]-colorO[0])/4.0 + yy*(colorV[0]-colorO[0])/4.0 + colorO[0])), 255);
-			img[channels*width*(starty+yy) + channels*(startx+xx) + 1] = (int)CLAMP(0, JAS_ROUND((xx*(colorH[1]-colorO[1])/4.0 + yy*(colorV[1]-colorO[1])/4.0 + colorO[1])), 255);
-			img[channels*width*(starty+yy) + channels*(startx+xx) + 2] = (int)CLAMP(0, JAS_ROUND((xx*(colorH[2]-colorO[2])/4.0 + yy*(colorV[2]-colorO[2])/4.0 + colorO[2])), 255);*/
+			/*img[channels*width*(starty+yy) + channels*(startx+xx) + 0] = (int)SATURATE(JAS_ROUND((xx*(colorH[0]-colorO[0])/4.0 + yy*(colorV[0]-colorO[0])/4.0 + colorO[0])));
+			img[channels*width*(starty+yy) + channels*(startx+xx) + 1] = (int)SATURATE(JAS_ROUND((xx*(colorH[1]-colorO[1])/4.0 + yy*(colorV[1]-colorO[1])/4.0 + colorO[1])));
+			img[channels*width*(starty+yy) + channels*(startx+xx) + 2] = (int)SATURATE(JAS_ROUND((xx*(colorH[2]-colorO[2])/4.0 + yy*(colorV[2]-colorO[2])/4.0 + colorO[2])));*/
 			
 		}
 	}
 }
-function decompressBlockPlanar57(compressed57_1: uint32, compressed57_2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockPlanar57(compressed57_1: uint, compressed57_2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockPlanar57c(compressed57_1, compressed57_2, img, width, height, startx, starty, 3);
 }
 // Decompress an ETC1 block (or ETC2 using individual or differential mode).
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
+function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
 {
 	let avg_color: uint8[3];
 	let enc_color1: uint8[3];
@@ -827,8 +748,8 @@ function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img:
 
 		table = GETBITSHIGH(block_part1, 3, 39) << 1;
 
-		let pixel_indices_MSB: uint32;
-		let pixel_indices_LSB: uint32;
+		let pixel_indices_MSB: uint;
+		let pixel_indices_LSB: uint;
 			
 		pixel_indices_MSB = GETBITS(block_part2, 16, 31);
 		pixel_indices_LSB = GETBITS(block_part2, 16, 15);
@@ -846,9 +767,9 @@ function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img:
 					shift++;
 					index=unscramble[index];
 
- 					r=SET_RED_CHANNEL(img,width,x,y,channels,   CLAMP(0,avg_color[0]+compressParams[table][index],255));
- 					g=SET_GREEN_CHANNEL(img,width,x,y,channels, CLAMP(0,avg_color[1]+compressParams[table][index],255));
- 					b=SET_BLUE_CHANNEL(img,width,x,y,channels,  CLAMP(0,avg_color[2]+compressParams[table][index],255));
+ 					r=SET_RED_CHANNEL   (img,width,x,y,channels, SATURATE(avg_color[0]+compressParams[table][index]));
+ 					g=SET_GREEN_CHANNEL (img,width,x,y,channels, SATURATE(avg_color[1]+compressParams[table][index]));
+ 					b=SET_BLUE_CHANNEL  (img,width,x,y,channels, SATURATE(avg_color[2]+compressParams[table][index]));
 				}
 			}
 		}
@@ -865,9 +786,9 @@ function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img:
 					shift++;
 					index=unscramble[index];
 
- 					r=SET_RED_CHANNEL(img,width,x,y,channels,   CLAMP(0,avg_color[0]+compressParams[table][index],255));
- 					g=SET_GREEN_CHANNEL(img,width,x,y,channels, CLAMP(0,avg_color[1]+compressParams[table][index],255));
- 					b=SET_BLUE_CHANNEL(img,width,x,y,channels,  CLAMP(0,avg_color[2]+compressParams[table][index],255));
+ 					r=SET_RED_CHANNEL   (img,width,x,y,channels, SATURATE(avg_color[0]+compressParams[table][index]));
+ 					g=SET_GREEN_CHANNEL (img,width,x,y,channels, SATURATE(avg_color[1]+compressParams[table][index]));
+ 					b=SET_BLUE_CHANNEL  (img,width,x,y,channels, SATURATE(avg_color[2]+compressParams[table][index]));
 				}
 				shift+=2;
 			}
@@ -902,9 +823,9 @@ function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img:
 					shift++;
 					index=unscramble[index];
 
- 					r=SET_RED_CHANNEL(img,width,x,y,channels,   CLAMP(0,avg_color[0]+compressParams[table][index],255));
- 					g=SET_GREEN_CHANNEL(img,width,x,y,channels, CLAMP(0,avg_color[1]+compressParams[table][index],255));
- 					b=SET_BLUE_CHANNEL(img,width,x,y,channels,  CLAMP(0,avg_color[2]+compressParams[table][index],255));
+ 					r=SET_RED_CHANNEL   (img,width,x,y,channels, SATURATE(avg_color[0]+compressParams[table][index]));
+ 					g=SET_GREEN_CHANNEL (img,width,x,y,channels, SATURATE(avg_color[1]+compressParams[table][index]));
+ 					b=SET_BLUE_CHANNEL  (img,width,x,y,channels, SATURATE(avg_color[2]+compressParams[table][index]));
 				}
 			}
 		}
@@ -921,9 +842,9 @@ function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img:
 					shift++;
 					index=unscramble[index];
 
- 					r=SET_RED_CHANNEL(img,width,x,y,channels,   CLAMP(0,avg_color[0]+compressParams[table][index],255));
- 					g=SET_GREEN_CHANNEL(img,width,x,y,channels, CLAMP(0,avg_color[1]+compressParams[table][index],255));
- 					b=SET_BLUE_CHANNEL(img,width,x,y,channels,  CLAMP(0,avg_color[2]+compressParams[table][index],255));
+ 					r=SET_RED_CHANNEL   (img,width,x,y,channels, SATURATE(avg_color[0]+compressParams[table][index]));
+ 					g=SET_GREEN_CHANNEL (img,width,x,y,channels, SATURATE(avg_color[1]+compressParams[table][index]));
+ 					b=SET_BLUE_CHANNEL  (img,width,x,y,channels, SATURATE(avg_color[2]+compressParams[table][index]));
 				}
 				shift += 2;
 			}
@@ -960,8 +881,8 @@ function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img:
 
 		table = GETBITSHIGH(block_part1, 3, 39) << 1;
 
-		let pixel_indices_MSB: uint32;
-		let pixel_indices_LSB: uint32;
+		let pixel_indices_MSB: uint;
+		let pixel_indices_LSB: uint;
 			
 		pixel_indices_MSB = GETBITS(block_part2, 16, 31);
 		pixel_indices_LSB = GETBITS(block_part2, 16, 15);
@@ -979,9 +900,9 @@ function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img:
 					shift++;
 					index=unscramble[index];
 
- 					r=SET_RED_CHANNEL(img,width,x,y,channels,   CLAMP(0,avg_color[0]+compressParams[table][index],255));
- 					g=SET_GREEN_CHANNEL(img,width,x,y,channels, CLAMP(0,avg_color[1]+compressParams[table][index],255));
- 					b=SET_BLUE_CHANNEL(img,width,x,y,channels,  CLAMP(0,avg_color[2]+compressParams[table][index],255));
+ 					r=SET_RED_CHANNEL   (img,width,x,y,channels, SATURATE(avg_color[0]+compressParams[table][index]));
+ 					g=SET_GREEN_CHANNEL (img,width,x,y,channels, SATURATE(avg_color[1]+compressParams[table][index]));
+ 					b=SET_BLUE_CHANNEL  (img,width,x,y,channels, SATURATE(avg_color[2]+compressParams[table][index]));
 				}
 			}
 		}
@@ -998,9 +919,9 @@ function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img:
 					shift++;
 					index=unscramble[index];
 
- 					r=SET_RED_CHANNEL(img,width,x,y,channels,   CLAMP(0,avg_color[0]+compressParams[table][index],255));
- 					g=SET_GREEN_CHANNEL(img,width,x,y,channels, CLAMP(0,avg_color[1]+compressParams[table][index],255));
- 					b=SET_BLUE_CHANNEL(img,width,x,y,channels,  CLAMP(0,avg_color[2]+compressParams[table][index],255));
+ 					r=SET_RED_CHANNEL   (img,width,x,y,channels, SATURATE(avg_color[0]+compressParams[table][index]));
+ 					g=SET_GREEN_CHANNEL (img,width,x,y,channels, SATURATE(avg_color[1]+compressParams[table][index]));
+ 					b=SET_BLUE_CHANNEL  (img,width,x,y,channels, SATURATE(avg_color[2]+compressParams[table][index]));
 				}
 				shift+=2;
 			}
@@ -1046,9 +967,9 @@ function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img:
 					shift++;
 					index=unscramble[index];
 
- 					r=SET_RED_CHANNEL(img,width,x,y,channels,   CLAMP(0,avg_color[0]+compressParams[table][index],255));
- 					g=SET_GREEN_CHANNEL(img,width,x,y,channels, CLAMP(0,avg_color[1]+compressParams[table][index],255));
- 					b=SET_BLUE_CHANNEL(img,width,x,y,channels,  CLAMP(0,avg_color[2]+compressParams[table][index],255));
+ 					r=SET_RED_CHANNEL   (img,width,x,y,channels, SATURATE(avg_color[0]+compressParams[table][index]));
+ 					g=SET_GREEN_CHANNEL (img,width,x,y,channels, SATURATE(avg_color[1]+compressParams[table][index]));
+ 					b=SET_BLUE_CHANNEL  (img,width,x,y,channels, SATURATE(avg_color[2]+compressParams[table][index]));
 				}
 			}
 		}
@@ -1065,23 +986,23 @@ function decompressBlockDiffFlipC(block_part1: uint32, block_part2: uint32, img:
 					shift++;
 					index=unscramble[index];
 
- 					r=SET_RED_CHANNEL(img,width,x,y,channels,   CLAMP(0,avg_color[0]+compressParams[table][index],255));
- 					g=SET_GREEN_CHANNEL(img,width,x,y,channels, CLAMP(0,avg_color[1]+compressParams[table][index],255));
- 					b=SET_BLUE_CHANNEL(img,width,x,y,channels,  CLAMP(0,avg_color[2]+compressParams[table][index],255));
+ 					r=SET_RED_CHANNEL   (img,width,x,y,channels, SATURATE(avg_color[0]+compressParams[table][index]));
+ 					g=SET_GREEN_CHANNEL (img,width,x,y,channels, SATURATE(avg_color[1]+compressParams[table][index]));
+ 					b=SET_BLUE_CHANNEL  (img,width,x,y,channels, SATURATE(avg_color[2]+compressParams[table][index]));
 				}
 				shift += 2;
 			}
 		}
 	}
 }
-function decompressBlockDiffFlip(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockDiffFlipC(block_part1, block_part2, img, width, height, startx, starty, 3);
 }
 
 // Decompress an ETC2 RGB block
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockETC2c(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
+function decompressBlockETC2c(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int, channels: int): void
 {
 	let diffbit: int;
 	let color1: int8[3];
@@ -1144,13 +1065,13 @@ function decompressBlockETC2c(block_part1: uint32, block_part2: uint32, img: Uin
 		decompressBlockDiffFlipC(block_part1, block_part2, img, width, height, startx, starty, channels);
 	}
 }
-function decompressBlockETC2(block_part1: uint32, block_part2: uint32, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockETC2(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockETC2c(block_part1, block_part2, img, width, height, startx, starty, 3);
 }
 // Decompress an ETC2 block with punchthrough alpha
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockDifferentialWithAlphaC(block_part1: uint32, block_part2: uint32, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
+function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: uint, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
 {
 	
 	let avg_color: uint8[3];
@@ -1196,8 +1117,8 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint32, block_part2:
 
 	table = GETBITSHIGH(block_part1, 3, 39) << 1;
 
-	let pixel_indices_MSB: uint32;
-	let pixel_indices_LSB: uint32;
+	let pixel_indices_MSB: uint;
+	let pixel_indices_LSB: uint;
 		
 	pixel_indices_MSB = GETBITS(block_part2, 16, 31);
 	pixel_indices_LSB = GETBITS(block_part2, 16, 15);
@@ -1221,15 +1142,15 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint32, block_part2:
 					mod=0;
 				}
 				
-				r=SET_RED_CHANNEL(img,width,x,y,channelsRGB,   CLAMP(0,avg_color[0]+mod,255));
-				g=SET_GREEN_CHANNEL(img,width,x,y,channelsRGB, CLAMP(0,avg_color[1]+mod,255));
-				b=SET_BLUE_CHANNEL(img,width,x,y,channelsRGB,  CLAMP(0,avg_color[2]+mod,255));
+				r=SET_RED_CHANNEL   (img,width,x,y,channelsRGB, SATURATE(avg_color[0]+mod));
+				g=SET_GREEN_CHANNEL (img,width,x,y,channelsRGB, SATURATE(avg_color[1]+mod));
+				b=SET_BLUE_CHANNEL  (img,width,x,y,channelsRGB, SATURATE(avg_color[2]+mod));
 				if(diffbit==0&&index==1) 
 				{
 					alpha[(y*width+x)*channelsA]=0;
-					r=SET_RED_CHANNEL(img,width,x,y,channelsRGB,   0);
-					g=SET_GREEN_CHANNEL(img,width,x,y,channelsRGB, 0);
-					b=SET_BLUE_CHANNEL(img,width,x,y,channelsRGB,  0);
+					r=SET_RED_CHANNEL   (img,width,x,y,channelsRGB, 0);
+					g=SET_GREEN_CHANNEL (img,width,x,y,channelsRGB, 0);
+					b=SET_BLUE_CHANNEL  (img,width,x,y,channelsRGB, 0);
 				}
 				else 
 				{
@@ -1256,15 +1177,15 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint32, block_part2:
 				{
 					mod=0;
 				}
-				r=SET_RED_CHANNEL(img,width,x,y,channelsRGB,   CLAMP(0,avg_color[0]+mod,255));
-				g=SET_GREEN_CHANNEL(img,width,x,y,channelsRGB, CLAMP(0,avg_color[1]+mod,255));
-				b=SET_BLUE_CHANNEL(img,width,x,y,channelsRGB,  CLAMP(0,avg_color[2]+mod,255));
+				r=SET_RED_CHANNEL   (img,width,x,y,channelsRGB, SATURATE(avg_color[0]+mod));
+				g=SET_GREEN_CHANNEL (img,width,x,y,channelsRGB, SATURATE(avg_color[1]+mod));
+				b=SET_BLUE_CHANNEL  (img,width,x,y,channelsRGB, SATURATE(avg_color[2]+mod));
 				if(diffbit==0&&index==1) 
 				{
 					alpha[(y*width+x)*channelsA]=0;
-					r=SET_RED_CHANNEL(img,width,x,y,channelsRGB,   0);
-					g=SET_GREEN_CHANNEL(img,width,x,y,channelsRGB, 0);
-					b=SET_BLUE_CHANNEL(img,width,x,y,channelsRGB,  0);
+					r=SET_RED_CHANNEL   (img,width,x,y,channelsRGB, 0);
+					g=SET_GREEN_CHANNEL (img,width,x,y,channelsRGB, 0);
+					b=SET_BLUE_CHANNEL  (img,width,x,y,channelsRGB, 0);
 				}
 				else 
 				{
@@ -1319,15 +1240,15 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint32, block_part2:
 					mod=0;
 				}
 				
-				r=SET_RED_CHANNEL(img,width,x,y,channelsRGB,   CLAMP(0,avg_color[0]+mod,255));
-				g=SET_GREEN_CHANNEL(img,width,x,y,channelsRGB, CLAMP(0,avg_color[1]+mod,255));
-				b=SET_BLUE_CHANNEL(img,width,x,y,channelsRGB,  CLAMP(0,avg_color[2]+mod,255));
+				r=SET_RED_CHANNEL   (img,width,x,y,channelsRGB, SATURATE(avg_color[0]+mod));
+				g=SET_GREEN_CHANNEL (img,width,x,y,channelsRGB, SATURATE(avg_color[1]+mod));
+				b=SET_BLUE_CHANNEL  (img,width,x,y,channelsRGB, SATURATE(avg_color[2]+mod));
 				if(diffbit==0&&index==1) 
 				{
 					alpha[(y*width+x)*channelsA]=0;
-					r=SET_RED_CHANNEL(img,width,x,y,channelsRGB,   0);
-					g=SET_GREEN_CHANNEL(img,width,x,y,channelsRGB, 0);
-					b=SET_BLUE_CHANNEL(img,width,x,y,channelsRGB,  0);
+					r=SET_RED_CHANNEL   (img,width,x,y,channelsRGB, 0);
+					g=SET_GREEN_CHANNEL (img,width,x,y,channelsRGB, 0);
+					b=SET_BLUE_CHANNEL  (img,width,x,y,channelsRGB, 0);
 				}
 				else 
 				{
@@ -1354,15 +1275,15 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint32, block_part2:
 					mod=0;
 				}
 				
-				r=SET_RED_CHANNEL(img,width,x,y,channelsRGB,   CLAMP(0,avg_color[0]+mod,255));
-				g=SET_GREEN_CHANNEL(img,width,x,y,channelsRGB, CLAMP(0,avg_color[1]+mod,255));
-				b=SET_BLUE_CHANNEL(img,width,x,y,channelsRGB,  CLAMP(0,avg_color[2]+mod,255));
+				r=SET_RED_CHANNEL   (img,width,x,y,channelsRGB, SATURATE(avg_color[0]+mod));
+				g=SET_GREEN_CHANNEL (img,width,x,y,channelsRGB, SATURATE(avg_color[1]+mod));
+				b=SET_BLUE_CHANNEL  (img,width,x,y,channelsRGB, SATURATE(avg_color[2]+mod));
 				if(diffbit==0&&index==1) 
 				{
 					alpha[(y*width+x)*channelsA]=0;
-					r=SET_RED_CHANNEL(img,width,x,y,channelsRGB,   0);
-					g=SET_GREEN_CHANNEL(img,width,x,y,channelsRGB, 0);
-					b=SET_BLUE_CHANNEL(img,width,x,y,channelsRGB,  0);
+					r=SET_RED_CHANNEL   (img,width,x,y,channelsRGB, 0);
+					g=SET_GREEN_CHANNEL (img,width,x,y,channelsRGB, 0);
+					b=SET_BLUE_CHANNEL  (img,width,x,y,channelsRGB, 0);
 				}
 				else 
 				{
@@ -1373,7 +1294,7 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint32, block_part2:
 		}
 	}
 }
-function decompressBlockDifferentialWithAlpha(block_part1: uint32, block_part2: uint32, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockDifferentialWithAlphaC(block_part1, block_part2, img, alpha, width, height, startx, starty, 3);
 }
@@ -1381,7 +1302,7 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint32, block_part2: 
 
 // similar to regular decompression, but alpha channel is set to 0 if pixel index is 2, otherwise 255.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB59TAlphaC(block_part1: uint32, block_part2: uint32, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
+function decompressBlockTHUMB59TAlphaC(block_part1: uint, block_part2: uint, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
 {
 
 	let colorsRGB444: uint8[2][3];
@@ -1427,12 +1348,9 @@ function decompressBlockTHUMB59TAlphaC(block_part1: uint32, block_part2: uint32,
 			//block_mask[x][y] = GETBITS(block_part2,2,31-(y*4+x)*2);
 			block_mask[x][y] = GETBITS(block_part2,1,(y+x*4)+16)<<1;
 			block_mask[x][y] |= GETBITS(block_part2,1,(y+x*4));
-			img[channelsRGB*((starty+y)*width+startx+x)+R] = 
-				CLAMP(0,paint_colors[block_mask[x][y]][R],255); // RED
-			img[channelsRGB*((starty+y)*width+startx+x)+G] =
-				CLAMP(0,paint_colors[block_mask[x][y]][G],255); // GREEN
-			img[channelsRGB*((starty+y)*width+startx+x)+B] =
-				CLAMP(0,paint_colors[block_mask[x][y]][B],255); // BLUE
+			img[channelsRGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]); // RED
+			img[channelsRGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]); // GREEN
+			img[channelsRGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]); // BLUE
 			if(block_mask[x][y]==2)  
 			{
 				alpha[channelsA*(x+startx+(y+starty)*width)]=0;
@@ -1445,7 +1363,7 @@ function decompressBlockTHUMB59TAlphaC(block_part1: uint32, block_part2: uint32,
 		}
 	}
 }
-function decompressBlockTHUMB59TAlpha(block_part1: uint32, block_part2: uint32, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB59TAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockTHUMB59TAlphaC(block_part1, block_part2, img, alpha, width, height, startx, starty, 3);
 }
@@ -1453,10 +1371,10 @@ function decompressBlockTHUMB59TAlpha(block_part1: uint32, block_part2: uint32, 
 
 // Decompress an H-mode block with alpha
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB58HAlphaC(block_part1: uint32, block_part2: uint32, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
+function decompressBlockTHUMB58HAlphaC(block_part1: uint, block_part2: uint, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
 {
-	let col0: uint32;
-	let col1: uint32;
+	let col0: uint;
+	let col1: uint;
 	let colors: uint8[2][3];
 	let colorsRGB444: uint8[2][3];
 	let paint_colors: uint8[4][3];
@@ -1510,12 +1428,9 @@ function decompressBlockTHUMB58HAlphaC(block_part1: uint32, block_part2: uint32,
 			//block_mask[x][y] = GETBITS(block_part2,2,31-(y*4+x)*2);
 			block_mask[x][y] = GETBITS(block_part2,1,(y+x*4)+16)<<1;
 			block_mask[x][y] |= GETBITS(block_part2,1,(y+x*4));
-			img[channelsRGB*((starty+y)*width+startx+x)+R] =
-				CLAMP(0,paint_colors[block_mask[x][y]][R],255); // RED
-			img[channelsRGB*((starty+y)*width+startx+x)+G] =
-				CLAMP(0,paint_colors[block_mask[x][y]][G],255); // GREEN
-			img[channelsRGB*((starty+y)*width+startx+x)+B] =
-				CLAMP(0,paint_colors[block_mask[x][y]][B],255); // BLUE
+			img[channelsRGB*((starty+y)*width+startx+x)+R] = SATURATE(paint_colors[block_mask[x][y]][R]); // RED
+			img[channelsRGB*((starty+y)*width+startx+x)+G] = SATURATE(paint_colors[block_mask[x][y]][G]); // GREEN
+			img[channelsRGB*((starty+y)*width+startx+x)+B] = SATURATE(paint_colors[block_mask[x][y]][B]); // BLUE
 			
 			if(block_mask[x][y]==2)  
 			{
@@ -1529,13 +1444,13 @@ function decompressBlockTHUMB58HAlphaC(block_part1: uint32, block_part2: uint32,
 		}
 	}
 }
-function decompressBlockTHUMB58HAlpha(block_part1: uint32, block_part2: uint32, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB58HAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, alpha: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockTHUMB58HAlphaC(block_part1, block_part2, img, alpha, width, height, startx, starty, 3);
 }
 // Decompression function for ETC2_RGBA1 format.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockETC21BitAlphaC(block_part1: uint32, block_part2: uint32, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
+function decompressBlockETC21BitAlphaC(block_part1: uint, block_part2: uint, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int, channelsRGB: int): void
 {
 	let diffbit: int;
 	let color1: int8[3];
@@ -1664,7 +1579,7 @@ function decompressBlockETC21BitAlphaC(block_part1: uint32, block_part2: uint32,
 			decompressBlockDifferentialWithAlphaC(block_part1, block_part2, img,alphaimg, width, height, startx, starty, channelsRGB);
 	}
 }
-function decompressBlockETC21BitAlpha(block_part1: uint32, block_part2: uint32, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
   decompressBlockETC21BitAlphaC(block_part1, block_part2, img, alphaimg, width, height, startx, starty, 3);
 }
