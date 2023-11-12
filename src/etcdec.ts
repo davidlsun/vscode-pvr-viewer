@@ -168,7 +168,6 @@ submitted to the exclusive jurisdiction of the Swedish Courts.
 // Typedefs
 type int8 = number;
 type uint8 = number;
-type int16 = number;
 type uint16 = number;
 type int = number;
 type uint = number;
@@ -203,14 +202,7 @@ const RGB = 3;
 
 // Helper Macros
 const SATURATE = (x: int): uint8 => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
-
-const RED_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[(y*width+x)*RGB+R] = value; };
-const GRN_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[(y*width+x)*RGB+G] = value; };
-const BLU_CHANNEL = (img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[(y*width+x)*RGB+B] = value; };
-
-// Global variables
-const PGMOUT = true;
-const formatSigned = false;
+const SET_COLOR = (channel: int, img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[(y*width+x)*RGB+channel] = SATURATE(value); };
 
 // Global tables
 const unscramble = [2, 3, 1, 0];
@@ -723,9 +715,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
-                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
-                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
+                    SET_COLOR(R, img, width, x, y, avg_color[R] + compressParams[table][index]);
+                    SET_COLOR(G, img, width, x, y, avg_color[G] + compressParams[table][index]);
+                    SET_COLOR(B, img, width, x, y, avg_color[B] + compressParams[table][index]);
                 }
             }
         }
@@ -740,9 +732,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
-                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
-                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
+                    SET_COLOR(R, img, width, x, y, avg_color[R] + compressParams[table][index]);
+                    SET_COLOR(G, img, width, x, y, avg_color[G] + compressParams[table][index]);
+                    SET_COLOR(B, img, width, x, y, avg_color[B] + compressParams[table][index]);
                 }
                 shift += 2;
             }
@@ -775,9 +767,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
-                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
-                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
+                    SET_COLOR(R, img, width, x, y, avg_color[R] + compressParams[table][index]);
+                    SET_COLOR(G, img, width, x, y, avg_color[G] + compressParams[table][index]);
+                    SET_COLOR(B, img, width, x, y, avg_color[B] + compressParams[table][index]);
                 }
             }
         }
@@ -792,9 +784,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
-                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
-                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
+                    SET_COLOR(R, img, width, x, y, avg_color[R] + compressParams[table][index]);
+                    SET_COLOR(G, img, width, x, y, avg_color[G] + compressParams[table][index]);
+                    SET_COLOR(B, img, width, x, y, avg_color[B] + compressParams[table][index]);
                 }
                 shift += 2;
             }
@@ -846,9 +838,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
-                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
-                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
+                    SET_COLOR(R, img, width, x, y, avg_color[R] + compressParams[table][index]);
+                    SET_COLOR(G, img, width, x, y, avg_color[G] + compressParams[table][index]);
+                    SET_COLOR(B, img, width, x, y, avg_color[B] + compressParams[table][index]);
                 }
             }
         }
@@ -863,9 +855,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
-                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
-                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
+                    SET_COLOR(R, img, width, x, y, avg_color[R] + compressParams[table][index]);
+                    SET_COLOR(G, img, width, x, y, avg_color[G] + compressParams[table][index]);
+                    SET_COLOR(B, img, width, x, y, avg_color[B] + compressParams[table][index]);
                 }
                 shift += 2;
             }
@@ -911,9 +903,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
-                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
-                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
+                    SET_COLOR(R, img, width, x, y, avg_color[R] + compressParams[table][index]);
+                    SET_COLOR(G, img, width, x, y, avg_color[G] + compressParams[table][index]);
+                    SET_COLOR(B, img, width, x, y, avg_color[B] + compressParams[table][index]);
                 }
             }
         }
@@ -928,9 +920,9 @@ function decompressBlockDiffFlipC(block_part1: uint, block_part2: uint, img: Uin
                     shift++;
                     index = unscramble[index];
 
-                    RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + compressParams[table][index]));
-                    GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + compressParams[table][index]));
-                    BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + compressParams[table][index]));
+                    SET_COLOR(R, img, width, x, y, avg_color[R] + compressParams[table][index]);
+                    SET_COLOR(G, img, width, x, y, avg_color[G] + compressParams[table][index]);
+                    SET_COLOR(B, img, width, x, y, avg_color[B] + compressParams[table][index]);
                 }
                 shift += 2;
             }
@@ -1042,14 +1034,14 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
                     mod = 0;
                 }
                 
-                RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + mod));
-                GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + mod));
-                BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + mod));
+                SET_COLOR(R, img, width, x, y, avg_color[R] + mod);
+                SET_COLOR(G, img, width, x, y, avg_color[G] + mod);
+                SET_COLOR(B, img, width, x, y, avg_color[B] + mod);
 
                 if (!diffbit && index === 1) {
-                    RED_CHANNEL(img, width, x, y, 0);
-                    GRN_CHANNEL(img, width, x, y, 0);
-                    BLU_CHANNEL(img, width, x, y, 0);
+                    SET_COLOR(R, img, width, x, y, 0);
+                    SET_COLOR(G, img, width, x, y, 0);
+                    SET_COLOR(B, img, width, x, y, 0);
                     alpha[y*width+x] = 0;
                 } else {
                     alpha[y*width+x] = 255;
@@ -1073,14 +1065,14 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
                     mod = 0;
                 }
 
-                RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + mod));
-                GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + mod));
-                BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + mod));
+                SET_COLOR(R, img, width, x, y, avg_color[R] + mod);
+                SET_COLOR(G, img, width, x, y, avg_color[G] + mod);
+                SET_COLOR(B, img, width, x, y, avg_color[B] + mod);
 
                 if (!diffbit && index === 1) {
-                    RED_CHANNEL(img, width, x, y, 0);
-                    GRN_CHANNEL(img, width, x, y, 0);
-                    BLU_CHANNEL(img, width, x, y, 0);
+                    SET_COLOR(R, img, width, x, y, 0);
+                    SET_COLOR(G, img, width, x, y, 0);
+                    SET_COLOR(B, img, width, x, y, 0);
                     alpha[y*width+x] = 0;
                 } else {
                     alpha[y*width+x] = 255;
@@ -1135,14 +1127,14 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
                     mod = 0;
                 }
                 
-                RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + mod));
-                GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + mod));
-                BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + mod));
+                SET_COLOR(R, img, width, x, y, avg_color[R] + mod);
+                SET_COLOR(G, img, width, x, y, avg_color[G] + mod);
+                SET_COLOR(B, img, width, x, y, avg_color[B] + mod);
 
                 if (!diffbit && index === 1) {
-                    RED_CHANNEL(img, width, x, y, 0);
-                    GRN_CHANNEL(img, width, x, y, 0);
-                    BLU_CHANNEL(img, width, x, y, 0);
+                    SET_COLOR(R, img, width, x, y, 0);
+                    SET_COLOR(G, img, width, x, y, 0);
+                    SET_COLOR(B, img, width, x, y, 0);
                     alpha[y*width+x] = 0;
                 } else {
                     alpha[y*width+x] = 255;
@@ -1166,14 +1158,14 @@ function decompressBlockDifferentialWithAlphaC(block_part1: uint, block_part2: u
                     mod = 0;
                 }
                 
-                RED_CHANNEL(img, width, x, y, SATURATE(avg_color[R] + mod));
-                GRN_CHANNEL(img, width, x, y, SATURATE(avg_color[G] + mod));
-                BLU_CHANNEL(img, width, x, y, SATURATE(avg_color[B] + mod));
+                SET_COLOR(R, img, width, x, y, avg_color[R] + mod);
+                SET_COLOR(G, img, width, x, y, avg_color[G] + mod);
+                SET_COLOR(B, img, width, x, y, avg_color[B] + mod);
 
                 if (!diffbit && index === 1) {
-                    RED_CHANNEL(img, width, x, y, 0);
-                    GRN_CHANNEL(img, width, x, y, 0);
-                    BLU_CHANNEL(img, width, x, y, 0);
+                    SET_COLOR(R, img, width, x, y, 0);
+                    SET_COLOR(G, img, width, x, y, 0);
+                    SET_COLOR(B, img, width, x, y, 0);
                     alpha[y*width+x] = 0;
                 } else {
                     alpha[y*width+x] = 255;
@@ -1446,57 +1438,6 @@ function decompressBlockAlpha(data: Uint8Array, img: Uint8Array, width: int, hei
     decompressBlockAlphaC(data, img, width, height, ix, iy);
 }
 
-// Does decompression and then immediately converts from 11 bit signed to a 16-bit format.
-// 
-// NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function get16bits11signed(base: int, table: int, mul: int, index: int): int16
-{
-    let elevenbase: int = base - 128;
-    if (elevenbase === -128) {
-        elevenbase = -127;
-    }
-    elevenbase *= 8;
-
-    //i want the positive value here
-    let tabVal: int = -alphaBase[table][3-index%4] - 1;
-    //and the sign, please
-    const sign: boolean = (1-(index/4) !== 0);
-    if (sign) {
-        tabVal = tabVal + 1;
-    }
-    let elevenTabVal: int = tabVal * 8;
-    if (mul !== 0) {
-        elevenTabVal *= mul;
-    } else {
-        elevenTabVal /= 8;
-    }
-    if (sign) {
-        elevenTabVal = -elevenTabVal;
-    }
-
-    //calculate sum
-    let elevenbits: int = elevenbase + elevenTabVal;
-
-    //clamp..
-    if (elevenbits >= 1024) {
-        elevenbits = 1023;
-    } else if (elevenbits < -1023) {
-        elevenbits = -1023;
-    }
-    //this is the value we would actually output.. 
-    //but there aren't any good 11-bit file or uncompressed GL formats
-    //so we extend to 15 bits signed.
-    const sign2: boolean = (elevenbits < 0);
-    elevenbits = Math.abs(elevenbits);
-    let fifteenbits: int16 = (elevenbits<<5) + (elevenbits>>5);
-    let sixteenbits: int16 = fifteenbits;
-
-    if (sign2) {
-        sixteenbits = -sixteenbits;
-    }
-    return sixteenbits;
-}
-
 // Does decompression and then immediately converts from 11 bit signed to a 16-bit format 
 // Calculates the 11 bit value represented by base, table, mul and index, and extends it to 16 bits.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
@@ -1544,14 +1485,6 @@ function decompressBlockAlpha16bitC(data: Uint8Array, img: Uint8Array, width: in
     let alpha: uint8 = data[0];
     const table: uint8 = data[1];
 
-    if (formatSigned) {
-        //if we have a signed format, the base value is given as a signed byte. We convert it to (0-255) here,
-        //so more code can be shared with the unsigned mode.
-        const memView = new DataView(data.buffer, data.byteOffset, data.byteLength);
-        alpha = memView.getInt8(0);
-        alpha += 128;
-    }
-
     let bit: int = 0;
     let byte: int = 2;
 
@@ -1571,26 +1504,8 @@ function decompressBlockAlpha16bitC(data: Uint8Array, img: Uint8Array, width: in
 
             const windex: int = 2*(ix+x+(iy+y)*width);
 
-            if (PGMOUT) {
-                const memView = new DataView(img.buffer, img.byteOffset, img.byteLength);
-                if (formatSigned) {
-                    memView.setInt16(windex, get16bits11signed(alpha, table % 16, table / 16, index), true);
-                } else {
-                    memView.setUint16(windex, get16bits11bits(alpha, table % 16, table / 16, index), true);
-                }
-            } else {
-                // make data compatible with the .pgm format. See the comment in compressBlockAlpha16() for details.
-                let uSixteen: uint16;
-                if (formatSigned) {
-                    // the pgm-format only allows unsigned images, so we add 2^15 to get a 16-bit value.
-                    uSixteen = get16bits11signed(alpha, table % 16, table / 16, index) + (256 * 128);
-                } else {
-                    uSixteen = get16bits11bits(alpha, table % 16, table / 16, index);
-                }
-                // byte swap for pgm
-                img[windex+0] = uSixteen / 256;
-                img[windex+1] = uSixteen % 256;
-            }
+            const memView = new DataView(img.buffer, img.byteOffset, img.byteLength);
+            memView.setUint16(windex, get16bits11bits(alpha, table % 16, table / 16, index), true);
         }
     }			
 }
