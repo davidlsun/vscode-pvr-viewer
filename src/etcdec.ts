@@ -168,13 +168,14 @@ submitted to the exclusive jurisdiction of the Swedish Courts.
 // Typedefs
 type int8 = number;
 type uint8 = number;
+type int16 = number;
 type uint16 = number;
 type int = number;
 type uint = number;
 
 // Macros to help with bit extraction/insertion
-const SHIFTLO = (size: uint, start: uint): uint => (start      - size+1);
-const SHIFTHI = (size: uint, start: uint): uint => (start - 32 - size+1);
+const SHIFTLO = (size: uint, start: uint): uint => (start      - size + 1);
+const SHIFTHI = (size: uint, start: uint): uint => (start - 32 - size + 1);
 const MASKLO = (size: uint, start: uint): uint => (((2 << (size - 1)) - 1) << SHIFTLO(size, start));
 const MASKHI = (size: uint, start: uint): uint => (((1 << (size    )) - 1) << SHIFTHI(size, start));
 const GETBITSLO = (src: uint, size: uint, start: uint): uint => ((src >> (start      - size + 1)) & ((1 << size) - 1));
@@ -183,14 +184,7 @@ const PUTBITSLO = (dest: uint, data: uint, size: uint, start: uint): uint => ((d
 const PUTBITSHI = (dest: uint, data: uint, size: uint, start: uint): uint => ((dest & ~MASKHI(size, start)) | ((data << SHIFTHI(size, start)) & MASKHI(size, start)));
 
 // Thumb macros and definitions
-const BLOCK_WIDTH = 4;
-const BLOCK_HEIGHT = 4;
-const R_BITS59T = 4;
-const G_BITS59T = 4;
-const B_BITS59T = 4;
-const R_BITS58H = 4;
-const G_BITS58H = 4;
-const B_BITS58H = 4;
+export const BLOCK_SIZE = 4;
 const TABLE_BITS_59T = 3;
 const TABLE_BITS_58H = 3;
 
@@ -205,6 +199,9 @@ const SATURATE = (x: int): uint8 => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
 const ARRAY_XY = (width:int, x: int, y: int): int => (y * width + x);
 const SET_COLOR = (channel: int, img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[ARRAY_XY(width, x, y) * RGB + channel] = SATURATE(value); };
 const SET_ALPHA = (alphaimg: Uint8Array, width: int, x: int, y: int, value: uint8): void => { alphaimg[ARRAY_XY(width, x, y)] = SATURATE(value); };
+
+// Global variables
+const formatSigned = false;
 
 // Global tables
 const unscramble = [2, 3, 1, 0];
@@ -253,7 +250,7 @@ const alphaBase = [
 
 // Code used to create the valtab
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function setupAlphaTable(): void
+export function setupAlphaTable(): void
 {
     if (alphaTableInitialized) {
         return;
@@ -280,6 +277,17 @@ function setupAlphaTable(): void
         for (let j: int = 0; j < 8; j++) {
             alphaTable[i][j] = alphaTable[old][j] * mul;
             //note: we don't do clamping here, though we could, because we'll be clamped afterwards anyway.
+        }
+    }
+}
+
+function decompressBlockTEST(img: Uint8Array, width: int, height: int, startx: int, starty: int, r: uint8, g: uint8, b: uint8): void
+{
+    for (let x: uint8 = 0; x < BLOCK_SIZE; x++) {
+        for (let y: uint8 = 0; y < BLOCK_SIZE; y++) {
+            SET_COLOR(R, img, width, startx+x, starty+y, r);
+            SET_COLOR(G, img, width, startx+x, starty+y, g);
+            SET_COLOR(B, img, width, startx+x, starty+y, b);
         }
     }
 }
@@ -442,7 +450,7 @@ function unstuff59bits(thumbT_word1: uint, thumbT_word2: uint): uint[/*2*/]
 
 // The color bits are expanded to the full color
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressColor(R_B: int, G_B: int, B_B: int, colors_RGB444: Uint8Array[/*2*/]): Uint8Array[/*2*/]
+function decompressColor(color_RGB444: Uint8Array): Uint8Array
 {
     // The color should be retrieved as:
     //
@@ -452,20 +460,14 @@ function decompressColor(R_B: int, G_B: int, B_B: int, colors_RGB444: Uint8Array
     // 
     // Note -- this code only work for bit replication from 4 bits and up --- 3 bits needs
     // two copy operations.
-    const colors = Array<Uint8Array>(2).fill(new Uint8Array(RGB));
-
-    colors[0][R] = (colors_RGB444[0][R] << (8 - R_B)) | (colors_RGB444[0][R] >> (R_B - (8 - R_B)));
-    colors[0][G] = (colors_RGB444[0][G] << (8 - G_B)) | (colors_RGB444[0][G] >> (G_B - (8 - G_B)));
-    colors[0][B] = (colors_RGB444[0][B] << (8 - B_B)) | (colors_RGB444[0][B] >> (B_B - (8 - B_B)));
-
-    colors[1][R] = (colors_RGB444[1][R] << (8 - R_B)) | (colors_RGB444[1][R] >> (R_B - (8 - R_B)));
-    colors[1][G] = (colors_RGB444[1][G] << (8 - G_B)) | (colors_RGB444[1][G] >> (G_B - (8 - G_B)));
-    colors[1][B] = (colors_RGB444[1][B] << (8 - B_B)) | (colors_RGB444[1][B] >> (B_B - (8 - B_B)));
-
-    return colors;
+    return new Uint8Array([
+        (color_RGB444[R] << 4) | color_RGB444[R],
+        (color_RGB444[G] << 4) | color_RGB444[G],
+        (color_RGB444[B] << 4) | color_RGB444[B]
+    ]);
 }
 
-function calculatePaintColors59T(dist: uint8, colors: Uint8Array[/*2*/]): Uint8Array[/*4*/]
+function calculatePaintColors59T(dist: uint8, color_0: Uint8Array, color_1: Uint8Array): Uint8Array[/*4*/]
 {
     //////////////////////////////////////////////
     //
@@ -481,24 +483,24 @@ function calculatePaintColors59T(dist: uint8, colors: Uint8Array[/*2*/]): Uint8A
     const possible_colors = Array<Uint8Array>(4).fill(new Uint8Array(RGB));
 
     // C4
-    possible_colors[3][R] = SATURATE(colors[1][R] - table59T[dist]);
-    possible_colors[3][G] = SATURATE(colors[1][G] - table59T[dist]);
-    possible_colors[3][B] = SATURATE(colors[1][B] - table59T[dist]);
+    possible_colors[3][R] = SATURATE(color_1[R] - table59T[dist]);
+    possible_colors[3][G] = SATURATE(color_1[G] - table59T[dist]);
+    possible_colors[3][B] = SATURATE(color_1[B] - table59T[dist]);
 
     // PATTERN_T
     {
         // C3
-        possible_colors[0][R] = colors[0][R];
-        possible_colors[0][G] = colors[0][G];
-        possible_colors[0][B] = colors[0][B];
+        possible_colors[0][R] = color_0[R];
+        possible_colors[0][G] = color_0[G];
+        possible_colors[0][B] = color_0[B];
         // C2
-        possible_colors[1][R] = SATURATE(colors[1][R] + table59T[dist]);
-        possible_colors[1][G] = SATURATE(colors[1][G] + table59T[dist]);
-        possible_colors[1][B] = SATURATE(colors[1][B] + table59T[dist]);
+        possible_colors[1][R] = SATURATE(color_1[R] + table59T[dist]);
+        possible_colors[1][G] = SATURATE(color_1[G] + table59T[dist]);
+        possible_colors[1][B] = SATURATE(color_1[B] + table59T[dist]);
         // C1
-        possible_colors[2][R] = colors[1][R];
-        possible_colors[2][G] = colors[1][G];
-        possible_colors[2][B] = colors[1][B];
+        possible_colors[2][R] = color_1[R];
+        possible_colors[2][G] = color_1[G];
+        possible_colors[2][B] = color_1[B];
     }
 
     return possible_colors;
@@ -517,28 +519,29 @@ function decompressBlockTHUMB59T(block_part1: uint, block_part2: uint, img: Uint
     const dist: uint8 = GETBITSHI(block_part1, TABLE_BITS_59T, 34);
 
     // First decode left part of block.
-    const colorsRGB444 = Array<Uint8Array>(2).fill(new Uint8Array(RGB));
-    colorsRGB444[0][R] = GETBITSHI(block_part1, 4, 58);
-    colorsRGB444[0][G] = GETBITSHI(block_part1, 4, 54);
-    colorsRGB444[0][B] = GETBITSHI(block_part1, 4, 50);
-    colorsRGB444[1][R] = GETBITSHI(block_part1, 4, 46);
-    colorsRGB444[1][G] = GETBITSHI(block_part1, 4, 42);
-    colorsRGB444[1][B] = GETBITSHI(block_part1, 4, 38);
+    const colorRGB444_0 = new Uint8Array([
+        GETBITSHI(block_part1, 4, 58),
+        GETBITSHI(block_part1, 4, 54),
+        GETBITSHI(block_part1, 4, 50)
+    ]);
+    const colorRGB444_1 = new Uint8Array([
+        GETBITSHI(block_part1, 4, 46),
+        GETBITSHI(block_part1, 4, 42),
+        GETBITSHI(block_part1, 4, 38)
+    ]);
 
     // Extend the two colors to RGB888
-    const colors = decompressColor(R_BITS59T, G_BITS59T, B_BITS59T, colorsRGB444);
-    const paint_colors = calculatePaintColors59T(dist, colors);
+    const color_0 = decompressColor(colorRGB444_0);
+    const color_1 = decompressColor(colorRGB444_1);
+    const paint_colors = calculatePaintColors59T(dist, color_0, color_1);
 
     // Choose one of the four paint colors for each texel
-    const block_mask = Array<Uint8Array>(BLOCK_WIDTH).fill(new Uint8Array(BLOCK_HEIGHT));
-    for (let x: uint8 = 0; x < BLOCK_WIDTH; x++) {
-        for (let y: uint8 = 0; y < BLOCK_HEIGHT; y++) {
-            block_mask[x][y]  = GETBITSLO(block_part2, 1, (y+x*4) + 16) << 1;
-            block_mask[x][y] |= GETBITSLO(block_part2, 1, (y+x*4));
-
-            SET_COLOR(R, img, width, startx+x, starty+y, paint_colors[block_mask[x][y]][R]);
-            SET_COLOR(G, img, width, startx+x, starty+y, paint_colors[block_mask[x][y]][G]);
-            SET_COLOR(B, img, width, startx+x, starty+y, paint_colors[block_mask[x][y]][B]);
+    for (let x: uint8 = 0; x < BLOCK_SIZE; x++) {
+        for (let y: uint8 = 0; y < BLOCK_SIZE; y++) {
+            const block_mask: uint8 = (GETBITSLO(block_part2, 1, y+x*4+16) << 1) | GETBITSLO(block_part2, 1, y+x*4);
+            SET_COLOR(R, img, width, startx+x, starty+y, paint_colors[block_mask][R]);
+            SET_COLOR(G, img, width, startx+x, starty+y, paint_colors[block_mask][G]);
+            SET_COLOR(B, img, width, startx+x, starty+y, paint_colors[block_mask][B]);
         }
     }
 }
@@ -546,7 +549,7 @@ function decompressBlockTHUMB59T(block_part1: uint, block_part2: uint, img: Uint
 // Calculate the paint colors from the block colors 
 // using a distance d and one of the H- or T-patterns.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function calculatePaintColors58H(dist: uint8, colors: Uint8Array[/*2*/]): Uint8Array[/*4*/]
+function calculatePaintColors58H(dist: uint8, color_0: Uint8Array, color_1: Uint8Array): Uint8Array[/*4*/]
 {
     //////////////////////////////////////////////
     //
@@ -562,24 +565,24 @@ function calculatePaintColors58H(dist: uint8, colors: Uint8Array[/*2*/]): Uint8A
     const possible_colors = Array<Uint8Array>(4).fill(new Uint8Array(RGB));
 
     // C4
-    possible_colors[3][R] = SATURATE(colors[1][R] - table58H[dist]);
-    possible_colors[3][G] = SATURATE(colors[1][G] - table58H[dist]);
-    possible_colors[3][B] = SATURATE(colors[1][B] - table58H[dist]);
+    possible_colors[3][R] = SATURATE(color_1[R] - table58H[dist]);
+    possible_colors[3][G] = SATURATE(color_1[G] - table58H[dist]);
+    possible_colors[3][B] = SATURATE(color_1[B] - table58H[dist]);
     
     // PATTERN_H
     { 
         // C1
-        possible_colors[0][R] = SATURATE(colors[0][R] + table58H[dist]);
-        possible_colors[0][G] = SATURATE(colors[0][G] + table58H[dist]);
-        possible_colors[0][B] = SATURATE(colors[0][B] + table58H[dist]);
+        possible_colors[0][R] = SATURATE(color_0[R] + table58H[dist]);
+        possible_colors[0][G] = SATURATE(color_0[G] + table58H[dist]);
+        possible_colors[0][B] = SATURATE(color_0[B] + table58H[dist]);
         // C2
-        possible_colors[1][R] = SATURATE(colors[0][R] - table58H[dist]);
-        possible_colors[1][G] = SATURATE(colors[0][G] - table58H[dist]);
-        possible_colors[1][B] = SATURATE(colors[0][B] - table58H[dist]);
+        possible_colors[1][R] = SATURATE(color_0[R] - table58H[dist]);
+        possible_colors[1][G] = SATURATE(color_0[G] - table58H[dist]);
+        possible_colors[1][B] = SATURATE(color_0[B] - table58H[dist]);
         // C3
-        possible_colors[2][R] = SATURATE(colors[1][R] + table58H[dist]);
-        possible_colors[2][G] = SATURATE(colors[1][G] + table58H[dist]);
-        possible_colors[2][B] = SATURATE(colors[1][B] + table58H[dist]);
+        possible_colors[2][R] = SATURATE(color_1[R] + table58H[dist]);
+        possible_colors[2][G] = SATURATE(color_1[G] + table58H[dist]);
+        possible_colors[2][B] = SATURATE(color_1[B] + table58H[dist]);
     }
 
     return possible_colors;
@@ -597,28 +600,29 @@ function decompressBlockTHUMB58H(block_part1: uint, block_part2: uint, img: Uint
     }
 
     // First decode left part of block.
-    const colorsRGB444 = Array<Uint8Array>(2).fill(new Uint8Array(RGB));
-    colorsRGB444[0][R] = GETBITSHI(block_part1, 4, 57);
-    colorsRGB444[0][G] = GETBITSHI(block_part1, 4, 53);
-    colorsRGB444[0][B] = GETBITSHI(block_part1, 4, 49);
-    colorsRGB444[1][R] = GETBITSHI(block_part1, 4, 45);
-    colorsRGB444[1][G] = GETBITSHI(block_part1, 4, 41);
-    colorsRGB444[1][B] = GETBITSHI(block_part1, 4, 37);
+    const colorRGB444_0 = new Uint8Array([
+        GETBITSHI(block_part1, 4, 57),
+        GETBITSHI(block_part1, 4, 53),
+        GETBITSHI(block_part1, 4, 49)
+    ]);
+    const colorRGB444_1 = new Uint8Array([
+        GETBITSHI(block_part1, 4, 45),
+        GETBITSHI(block_part1, 4, 41),
+        GETBITSHI(block_part1, 4, 37)
+    ]);
 
     // Extend the two colors to RGB888
-    const colors = decompressColor(R_BITS58H, G_BITS58H, B_BITS58H, colorsRGB444);
-    const paint_colors = calculatePaintColors58H(dist, colors);
+    const color_0 = decompressColor(colorRGB444_0);
+    const color_1 = decompressColor(colorRGB444_1);
+    const paint_colors = calculatePaintColors58H(dist, color_0, color_1);
     
     // Choose one of the four paint colors for each texel
-    const block_mask = Array<Uint8Array>(BLOCK_WIDTH).fill(new Uint8Array(BLOCK_HEIGHT));
-    for (let x: uint8 = 0; x < BLOCK_WIDTH; x++) {
-        for (let y: uint8 = 0; y < BLOCK_HEIGHT; y++) {
-            block_mask[x][y]  = GETBITSLO(block_part2, 1, (y+x*4) + 16) << 1;
-            block_mask[x][y] |= GETBITSLO(block_part2, 1, (y+x*4));
-
-            SET_COLOR(R, img, width, startx+x, starty+y, paint_colors[block_mask[x][y]][R]);
-            SET_COLOR(G, img, width, startx+x, starty+y, paint_colors[block_mask[x][y]][G]);
-            SET_COLOR(B, img, width, startx+x, starty+y, paint_colors[block_mask[x][y]][B]);
+    for (let x: uint8 = 0; x < BLOCK_SIZE; x++) {
+        for (let y: uint8 = 0; y < BLOCK_SIZE; y++) {
+            const block_mask: uint8 = (GETBITSLO(block_part2, 1, y+x*4+16) << 1) | GETBITSLO(block_part2, 1, y+x*4);
+            SET_COLOR(R, img, width, startx+x, starty+y, paint_colors[block_mask][R]);
+            SET_COLOR(G, img, width, startx+x, starty+y, paint_colors[block_mask][G]);
+            SET_COLOR(B, img, width, startx+x, starty+y, paint_colors[block_mask][B]);
         }
     }
 }
@@ -627,21 +631,21 @@ function decompressBlockTHUMB58H(block_part1: uint, block_part2: uint, img: Uint
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
 function decompressBlockPlanar57(compressed57_1: uint, compressed57_2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
-    const colorO = new Uint8Array(RGB);
-    const colorH = new Uint8Array(RGB);
-    const colorV = new Uint8Array(RGB);
-
-    colorO[R] = GETBITSHI(compressed57_1, 6, 63);
-    colorO[G] = GETBITSHI(compressed57_1, 7, 57);
-    colorO[B] = GETBITSHI(compressed57_1, 6, 50);
-
-    colorH[R] = GETBITSHI(compressed57_1, 6, 44);
-    colorH[G] = GETBITSHI(compressed57_1, 7, 38);
-    colorH[B] = GETBITSLO(compressed57_2, 6, 31);
-
-    colorV[R] = GETBITSLO(compressed57_2, 6, 25);
-    colorV[G] = GETBITSLO(compressed57_2, 7, 19);
-    colorV[B] = GETBITSLO(compressed57_2, 6, 12);
+    const colorO = new Uint8Array([
+        GETBITSHI(compressed57_1, 6, 63),
+        GETBITSHI(compressed57_1, 7, 57),
+        GETBITSHI(compressed57_1, 6, 50)
+    ]);
+    const colorH = new Uint8Array([
+        GETBITSHI(compressed57_1, 6, 44),
+        GETBITSHI(compressed57_1, 7, 38),
+        GETBITSLO(compressed57_2, 6, 31)
+    ]);
+    const colorV = new Uint8Array([
+        GETBITSLO(compressed57_2, 6, 25),
+        GETBITSLO(compressed57_2, 7, 19),
+        GETBITSLO(compressed57_2, 6, 12)
+    ]);
 
     colorO[R] = (colorO[R] << 2) | (colorO[R] >> 4);
     colorO[G] = (colorO[G] << 1) | (colorO[G] >> 6);
@@ -655,8 +659,8 @@ function decompressBlockPlanar57(compressed57_1: uint, compressed57_2: uint, img
     colorV[G] = (colorV[G] << 1) | (colorV[G] >> 6);
     colorV[B] = (colorV[B] << 2) | (colorV[B] >> 4);
 
-    for (let x: int = 0; x < BLOCK_WIDTH; x++) {
-        for (let y: int = 0; y < BLOCK_HEIGHT; y++) {
+    for (let x: int = 0; x < BLOCK_SIZE; x++) {
+        for (let y: int = 0; y < BLOCK_SIZE; y++) {
             SET_COLOR(R, img, width, startx+x, starty+y, (x*(colorH[R]-colorO[R]) + y*(colorV[R]-colorO[R]) + 4*colorO[R] + 2) >> 2);
             SET_COLOR(G, img, width, startx+x, starty+y, (x*(colorH[G]-colorO[G]) + y*(colorV[G]-colorO[G]) + 4*colorO[G] + 2) >> 2);
             SET_COLOR(B, img, width, startx+x, starty+y, (x*(colorH[B]-colorO[B]) + y*(colorV[B]-colorO[B]) + 4*colorO[B] + 2) >> 2);
@@ -676,17 +680,16 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
         // We have diffbit = 0.
 
         // First decode left part of block.
-        const avg_color = new Uint8Array(RGB);
-        avg_color[R] = GETBITSHI(block_part1, 4, 63);
-        avg_color[G] = GETBITSHI(block_part1, 4, 55);
-        avg_color[B] = GETBITSHI(block_part1, 4, 47);
+        const avg_color4444 = new Uint8Array([
+            GETBITSHI(block_part1, 4, 63),
+            GETBITSHI(block_part1, 4, 55),
+            GETBITSHI(block_part1, 4, 47)
+        ]);
 
         // Here, we should really multiply by 17 instead of 16. This can
         // be done by just copying the four lower bits to the upper ones
         // while keeping the lower bits.
-        avg_color[R] |= (avg_color[R] << 4);
-        avg_color[G] |= (avg_color[G] << 4);
-        avg_color[B] |= (avg_color[B] << 4);
+        const avg_color = decompressColor(avg_color4444);
 
         let table: int = (GETBITSHI(block_part1, 3, 39) << 1);
         let pixel_indices_MSB: uint = GETBITSLO(block_part2, 16, 31);
@@ -800,16 +803,18 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
 //      --------------------------------------------------------------------------------------------------      
 
         // First decode left part of block.
-        const enc_color1 = new Uint8Array(RGB);
-        enc_color1[R] = GETBITSHI(block_part1, 5, 63);
-        enc_color1[G] = GETBITSHI(block_part1, 5, 55);
-        enc_color1[B] = GETBITSHI(block_part1, 5, 47);
+        const enc_color1 = new Uint8Array([
+            GETBITSHI(block_part1, 5, 63),
+            GETBITSHI(block_part1, 5, 55),
+            GETBITSHI(block_part1, 5, 47)
+        ]);
 
         // Expand from 5 to 8 bits
-        const avg_color = new Uint8Array(RGB);
-        avg_color[R] = (enc_color1[R] << 3) | (enc_color1[R] >> 2);
-        avg_color[G] = (enc_color1[G] << 3) | (enc_color1[G] >> 2);
-        avg_color[B] = (enc_color1[B] << 3) | (enc_color1[B] >> 2);
+        const avg_color = new Uint8Array([
+            (enc_color1[R] << 3) | (enc_color1[R] >> 2),
+            (enc_color1[G] << 3) | (enc_color1[G] >> 2),
+            (enc_color1[B] << 3) | (enc_color1[B] >> 2)
+        ]);
 
         let table: int = (GETBITSHI(block_part1, 3, 39) << 1);
         let pixel_indices_MSB: uint = GETBITSLO(block_part2, 16, 31);
@@ -852,29 +857,26 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
         }
 
         // Now decode right part of block. 
-        const diff = new Int8Array(RGB);
-        diff[R] = GETBITSHI(block_part1, 3, 58);
-        diff[G] = GETBITSHI(block_part1, 3, 50);
-        diff[B] = GETBITSHI(block_part1, 3, 42);
+        let diff_R: int8 = GETBITSHI(block_part1, 3, 58);
+        let diff_G: int8 = GETBITSHI(block_part1, 3, 50);
+        let diff_B: int8 = GETBITSHI(block_part1, 3, 42);
 
         // Extend sign bit to entire byte. 
-        diff[R] = (diff[R] << 5);
-        diff[G] = (diff[G] << 5);
-        diff[B] = (diff[B] << 5);
-        diff[R] = diff[R] >> 5;
-        diff[G] = diff[G] >> 5;
-        diff[B] = diff[B] >> 5;
+        if (diff_R >= 4) { diff_R -= 8; }
+        if (diff_G >= 4) { diff_G -= 8; }
+        if (diff_B >= 4) { diff_B -= 8; }
 
         //  Calculale second color
-        const enc_color2 = new Uint8Array(RGB);
-        enc_color2[R] = enc_color1[R] + diff[R];
-        enc_color2[G] = enc_color1[G] + diff[G];
-        enc_color2[B] = enc_color1[B] + diff[B];
+        const enc_color2 = new Uint8Array([
+            enc_color1[R] + diff_R,
+            enc_color1[G] + diff_G,
+            enc_color1[B] + diff_B
+        ]);
 
         // Expand from 5 to 8 bits
-        avg_color[R] = (enc_color2[R] <<3) | (enc_color2[R] >> 2);
-        avg_color[G] = (enc_color2[G] <<3) | (enc_color2[G] >> 2);
-        avg_color[B] = (enc_color2[B] <<3) | (enc_color2[B] >> 2);
+        avg_color[R] = (enc_color2[R] << 3) | (enc_color2[R] >> 2);
+        avg_color[G] = (enc_color2[G] << 3) | (enc_color2[G] >> 2);
+        avg_color[B] = (enc_color2[B] << 3) | (enc_color2[B] >> 2);
 
         table = (GETBITSHI(block_part1, 3, 36) << 1);
         pixel_indices_MSB = GETBITSLO(block_part2, 16, 31);
@@ -920,7 +922,7 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
 
 // Decompress an ETC2 RGB block
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockETC2(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+export function decompressBlockETC2(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
     const diffbit: boolean = (GETBITSHI(block_part1, 1, 33) !== 0);
 
@@ -929,46 +931,46 @@ function decompressBlockETC2(block_part1: uint, block_part2: uint, img: Uint8Arr
         // We have diffbit = 1;
 
         // Base color
-        const color1 = new Int8Array(RGB);
-        color1[R] = GETBITSHI(block_part1, 5, 63);
-        color1[G] = GETBITSHI(block_part1, 5, 55);
-        color1[B] = GETBITSHI(block_part1, 5, 47);
+        let color1_R: int8 = GETBITSHI(block_part1, 5, 63);
+        let color1_G: int8 = GETBITSHI(block_part1, 5, 55);
+        let color1_B: int8 = GETBITSHI(block_part1, 5, 47);
 
         // Diff color
-        const diff = new Int8Array(RGB);
-        diff[R] = GETBITSHI(block_part1, 3, 58);
-        diff[G] = GETBITSHI(block_part1, 3, 50);
-        diff[B] = GETBITSHI(block_part1, 3, 42);
+        let diff_R: int8 = GETBITSHI(block_part1, 3, 58);
+        let diff_G: int8 = GETBITSHI(block_part1, 3, 50);
+        let diff_B: int8 = GETBITSHI(block_part1, 3, 42);
 
-        // Extend sign bit to entire byte. 
-        diff[R] = (diff[R] << 5);
-        diff[G] = (diff[G] << 5);
-        diff[B] = (diff[B] << 5);
-        diff[R] = diff[R] >> 5;
-        diff[G] = diff[G] >> 5;
-        diff[B] = diff[B] >> 5;
+        // Extend sign bit to entire byte.
+        if (diff_R >= 4) { diff_R -= 8; }
+        if (diff_G >= 4) { diff_G -= 8; }
+        if (diff_B >= 4) { diff_B -= 8; }
 
-        const red: int8   = color1[R] + diff[R];
-        const green: int8 = color1[G] + diff[G];
-        const blue: int8  = color1[B] + diff[B];
+        const r: int8 = color1_R + diff_R;
+        const g: int8 = color1_G + diff_G;
+        const b: int8 = color1_B + diff_B;
 
-        if (red < 0 || red > 31) {
+        if (r < 0 || r > 31) {
             const [block59_part1, block59_part2] = unstuff59bits(block_part1, block_part2);
             decompressBlockTHUMB59T(block59_part1, block59_part2, img, width, height, startx, starty);
-        } else if (green < 0 || green > 31) {
+            decompressBlockTEST(img, width, height, startx, starty, 255, 0, 0);
+        } else if (g < 0 || g > 31) {
             const [block58_part1, block58_part2] = unstuff58bits(block_part1, block_part2);
             decompressBlockTHUMB58H(block58_part1, block58_part2, img, width, height, startx, starty);
-        } else if (blue < 0 || blue > 31) {
+            decompressBlockTEST(img, width, height, startx, starty, 0, 255, 0);
+        } else if (b < 0 || b > 31) {
             const [block57_part1, block57_part2] = unstuff57bits(block_part1, block_part2);
             decompressBlockPlanar57(block57_part1, block57_part2, img, width, height, startx, starty);
+            //decompressBlockTEST(img, width, height, startx, starty, 0, 0, 255);
         } else {
             decompressBlockDiffFlip(block_part1, block_part2, img, width, height, startx, starty);
+            //decompressBlockTEST(img, width, height, startx, starty, 255, 0, 255);
         }
     }
     else
     {
         // We have diffbit = 0;
         decompressBlockDiffFlip(block_part1, block_part2, img, width, height, startx, starty);
+        //decompressBlockTEST(img, width, height, startx, starty, 255, 255, 0);
     }
 }
 
@@ -981,16 +983,18 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
     const flipbit: boolean = (GETBITSHI(block_part1, 1, 32) !== 0);
 
     // First decode left part of block.
-    const enc_color1 = new Uint8Array(RGB);
-    enc_color1[R] = GETBITSHI(block_part1, 5, 63);
-    enc_color1[G] = GETBITSHI(block_part1, 5, 55);
-    enc_color1[B] = GETBITSHI(block_part1, 5, 47);
+    const enc_color1 = new Uint8Array([
+        GETBITSHI(block_part1, 5, 63),
+        GETBITSHI(block_part1, 5, 55),
+        GETBITSHI(block_part1, 5, 47)
+    ]);
 
     // Expand from 5 to 8 bits
-    const avg_color = new Uint8Array(RGB);
-    avg_color[R] = (enc_color1[R] << 3) | (enc_color1[R] >> 2);
-    avg_color[G] = (enc_color1[G] << 3) | (enc_color1[G] >> 2);
-    avg_color[B] = (enc_color1[B] << 3) | (enc_color1[B] >> 2);
+    const avg_color = new Uint8Array([
+        (enc_color1[R] << 3) | (enc_color1[R] >> 2),
+        (enc_color1[G] << 3) | (enc_color1[G] >> 2),
+        (enc_color1[B] << 3) | (enc_color1[B] >> 2)
+    ]);
 
     let table: int = (GETBITSHI(block_part1, 3, 39) << 1);
     let pixel_indices_MSB: uint = GETBITSLO(block_part2, 16, 31);
@@ -1059,24 +1063,21 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
     }
 
     // Now decode right part of block. 
-    const diff = new Uint8Array(RGB);
-    diff[R] = GETBITSHI(block_part1, 3, 58);
-    diff[G] = GETBITSHI(block_part1, 3, 50);
-    diff[B] = GETBITSHI(block_part1, 3, 42);
+    let diff_R: int8 = GETBITSHI(block_part1, 3, 58);
+    let diff_G: int8 = GETBITSHI(block_part1, 3, 50);
+    let diff_B: int8 = GETBITSHI(block_part1, 3, 42);
 
-    // Extend sign bit to entire byte. 
-    diff[R] = (diff[R] << 5);
-    diff[G] = (diff[G] << 5);
-    diff[B] = (diff[B] << 5);
-    diff[R] = diff[R] >> 5;
-    diff[G] = diff[G] >> 5;
-    diff[B] = diff[B] >> 5;
+    // Extend sign bit to entire byte.
+    if (diff_R >= 4) { diff_R -= 8; }
+    if (diff_G >= 4) { diff_G -= 8; }
+    if (diff_B >= 4) { diff_B -= 8; }
 
     // Calculate second color
-    const enc_color2 = new Uint8Array(RGB);
-    enc_color2[R] = enc_color1[R] + diff[R];
-    enc_color2[G] = enc_color1[G] + diff[G];
-    enc_color2[B] = enc_color1[B] + diff[B];
+    const enc_color2 = new Uint8Array([
+        enc_color1[R] + diff_R,
+        enc_color1[G] + diff_G,
+        enc_color1[B] + diff_B
+    ]);
 
     // Expand from 5 to 8 bits
     avg_color[R] = (enc_color2[R] << 3) | (enc_color2[R] >> 2);
@@ -1157,34 +1158,35 @@ function decompressBlockTHUMB59TAlpha(block_part1: uint, block_part2: uint, img:
     const dist: uint8 = GETBITSHI(block_part1, TABLE_BITS_59T, 34);
 
     // First decode left part of block.
-    const colorsRGB444 = Array<Uint8Array>(2).fill(new Uint8Array(RGB));
-    colorsRGB444[0][R] = GETBITSHI(block_part1, 4, 58);
-    colorsRGB444[0][G] = GETBITSHI(block_part1, 4, 54);
-    colorsRGB444[0][B] = GETBITSHI(block_part1, 4, 50);
-    colorsRGB444[1][R] = GETBITSHI(block_part1, 4, 46);
-    colorsRGB444[1][G] = GETBITSHI(block_part1, 4, 42);
-    colorsRGB444[1][B] = GETBITSHI(block_part1, 4, 38);
+    const colorRGB444_0 = new Uint8Array([
+        GETBITSHI(block_part1, 4, 58),
+        GETBITSHI(block_part1, 4, 54),
+        GETBITSHI(block_part1, 4, 50)
+    ]);
+    const colorRGB444_1 = new Uint8Array([
+        GETBITSHI(block_part1, 4, 46),
+        GETBITSHI(block_part1, 4, 42),
+        GETBITSHI(block_part1, 4, 38)
+    ]);
 
-    // Extend the two colors to RGB888	
-    const colors = decompressColor(R_BITS59T, G_BITS59T, B_BITS59T, colorsRGB444);
-    const paint_colors = calculatePaintColors59T(dist, colors);
+    // Extend the two colors to RGB888
+    const color_0 = decompressColor(colorRGB444_0);
+    const color_1 = decompressColor(colorRGB444_1);
+    const paint_colors = calculatePaintColors59T(dist, color_0, color_1);
 
     // Choose one of the four paint colors for each texel
-    const block_mask = Array<Uint8Array>(BLOCK_WIDTH).fill(new Uint8Array(BLOCK_HEIGHT));
-    for (let x: uint8 = 0; x < BLOCK_WIDTH; x++) {
-        for (let y: uint8 = 0; y < BLOCK_HEIGHT; y++) {
-            block_mask[x][y]  = GETBITSLO(block_part2, 1, (y+x*4) + 16) << 1;
-            block_mask[x][y] |= GETBITSLO(block_part2, 1, (y+x*4));
-
-            if (block_mask[x][y] === 2) {
+    for (let x: uint8 = 0; x < BLOCK_SIZE; x++) {
+        for (let y: uint8 = 0; y < BLOCK_SIZE; y++) {
+            const block_mask: uint8 = (GETBITSLO(block_part2, 1, y+x*4+16) << 1) | GETBITSLO(block_part2, 1, y+x*4);
+            if (block_mask === 2) {
                 SET_COLOR(R, img, width, startx+x, starty+y, 0);
                 SET_COLOR(G, img, width, startx+x, starty+y, 0);
                 SET_COLOR(B, img, width, startx+x, starty+y, 0);
                 SET_ALPHA(alphaimg, startx+x, starty+y, width, 0);
             } else {
-                SET_COLOR(R, img, width, startx+x, starty+y, paint_colors[block_mask[x][y]][R]);
-                SET_COLOR(G, img, width, startx+x, starty+y, paint_colors[block_mask[x][y]][G]);
-                SET_COLOR(B, img, width, startx+x, starty+y, paint_colors[block_mask[x][y]][B]);
+                SET_COLOR(R, img, width, startx+x, starty+y, paint_colors[block_mask][R]);
+                SET_COLOR(G, img, width, startx+x, starty+y, paint_colors[block_mask][G]);
+                SET_COLOR(B, img, width, startx+x, starty+y, paint_colors[block_mask][B]);
                 SET_ALPHA(alphaimg, startx+x, starty+y, width, 255);
             }
         }
@@ -1203,34 +1205,35 @@ function decompressBlockTHUMB58HAlpha(block_part1: uint, block_part2: uint, img:
     }
 
     // First decode left part of block.
-    const colorsRGB444 = Array<Uint8Array>(2).fill(new Uint8Array(RGB));
-    colorsRGB444[0][R] = GETBITSHI(block_part1, 4, 57);
-    colorsRGB444[0][G] = GETBITSHI(block_part1, 4, 53);
-    colorsRGB444[0][B] = GETBITSHI(block_part1, 4, 49);
-    colorsRGB444[1][R] = GETBITSHI(block_part1, 4, 45);
-    colorsRGB444[1][G] = GETBITSHI(block_part1, 4, 41);
-    colorsRGB444[1][B] = GETBITSHI(block_part1, 4, 37);
+    const colorRGB444_0 = new Uint8Array([
+        GETBITSHI(block_part1, 4, 57),
+        GETBITSHI(block_part1, 4, 53),
+        GETBITSHI(block_part1, 4, 49)
+    ]);
+    const colorRGB444_1 = new Uint8Array([
+        GETBITSHI(block_part1, 4, 45),
+        GETBITSHI(block_part1, 4, 41),
+        GETBITSHI(block_part1, 4, 37)
+    ]);
 
     // Extend the two colors to RGB888
-    const colors = decompressColor(R_BITS58H, G_BITS58H, B_BITS58H, colorsRGB444);
-    const paint_colors = calculatePaintColors58H(dist, colors);
+    const color_0 = decompressColor(colorRGB444_0);
+    const color_1 = decompressColor(colorRGB444_1);
+    const paint_colors = calculatePaintColors58H(dist, color_0, color_1);
 
     // Choose one of the four paint colors for each texel
-    const block_mask = Array<Uint8Array>(BLOCK_WIDTH).fill(new Uint8Array(BLOCK_HEIGHT));
-    for (let x: uint8 = 0; x < BLOCK_WIDTH; x++) {
-        for (let y: uint8 = 0; y < BLOCK_HEIGHT; y++) {
-            block_mask[x][y]  = GETBITSLO(block_part2, 1, (y+x*4) + 16) << 1;
-            block_mask[x][y] |= GETBITSLO(block_part2, 1, (y+x*4));
-
-            if (block_mask[x][y] === 2) {
+    for (let x: uint8 = 0; x < BLOCK_SIZE; x++) {
+        for (let y: uint8 = 0; y < BLOCK_SIZE; y++) {
+            const block_mask: uint8 = (GETBITSLO(block_part2, 1, y+x*4+16) << 1) | GETBITSLO(block_part2, 1, y+x*4);
+            if (block_mask === 2) {
                 SET_COLOR(R, img, width, startx+x, starty+y, 0);
                 SET_COLOR(G, img, width, startx+x, starty+y, 0);
                 SET_COLOR(B, img, width, startx+x, starty+y, 0);
                 SET_ALPHA(alphaimg, startx+x, starty+y, width, 0);
             } else {
-                SET_COLOR(R, img, width, startx+x, starty+y, paint_colors[block_mask[x][y]][R]);
-                SET_COLOR(G, img, width, startx+x, starty+y, paint_colors[block_mask[x][y]][G]);
-                SET_COLOR(B, img, width, startx+x, starty+y, paint_colors[block_mask[x][y]][B]);
+                SET_COLOR(R, img, width, startx+x, starty+y, paint_colors[block_mask][R]);
+                SET_COLOR(G, img, width, startx+x, starty+y, paint_colors[block_mask][G]);
+                SET_COLOR(B, img, width, startx+x, starty+y, paint_colors[block_mask][B]);
                 SET_ALPHA(alphaimg, startx+x, starty+y, width, 255);
             }
         }
@@ -1239,7 +1242,7 @@ function decompressBlockTHUMB58HAlpha(block_part1: uint, block_part2: uint, img:
 
 // Decompression function for ETC2_RGBA1 format.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int): void
+export function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
     const diffbit: boolean = (GETBITSHI(block_part1, 1, 33) !== 0);
 
@@ -1248,36 +1251,31 @@ function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img:
         // We have diffbit = 1, meaning no transparent pixels. regular decompression.
 
         // Base color
-        const color1 = new Int8Array(RGB);
-        color1[R] = GETBITSHI(block_part1, 5, 63);
-        color1[G] = GETBITSHI(block_part1, 5, 55);
-        color1[B] = GETBITSHI(block_part1, 5, 47);
+        let color1_R: int8 = GETBITSHI(block_part1, 5, 63);
+        let color1_G: int8 = GETBITSHI(block_part1, 5, 55);
+        let color1_B: int8 = GETBITSHI(block_part1, 5, 47);
 
         // Diff color
-        const diff = new Int8Array(RGB);
-        diff[R] = GETBITSHI(block_part1, 3, 58);
-        diff[G] = GETBITSHI(block_part1, 3, 50);
-        diff[B] = GETBITSHI(block_part1, 3, 42);
+        let diff_R: int8 = GETBITSHI(block_part1, 3, 58);
+        let diff_G: int8 = GETBITSHI(block_part1, 3, 50);
+        let diff_B: int8 = GETBITSHI(block_part1, 3, 42);
 
-        // Extend sign bit to entire byte. 
-        diff[R] = (diff[R] << 5);
-        diff[G] = (diff[G] << 5);
-        diff[B] = (diff[B] << 5);
-        diff[R] = diff[R] >> 5;
-        diff[G] = diff[G] >> 5;
-        diff[B] = diff[B] >> 5;
+        // Extend sign bit to entire byte.
+        if (diff_R >= 4) { diff_R -= 8; }
+        if (diff_G >= 4) { diff_G -= 8; }
+        if (diff_B >= 4) { diff_B -= 8; }
 
-        const red: int8   = color1[R] + diff[R];
-        const green: int8 = color1[G] + diff[G];
-        const blue: int8  = color1[B] + diff[B];
+        const r: int8 = color1_R + diff_R;
+        const g: int8 = color1_G + diff_G;
+        const b: int8 = color1_B + diff_B;
 
-        if (red < 0 || red > 31) {
+        if (r < 0 || r > 31) {
             const [block59_part1, block59_part2] = unstuff59bits(block_part1, block_part2);
             decompressBlockTHUMB59T(block59_part1, block59_part2, img, width, height, startx, starty);
-        } else if (green < 0 || green > 31) {
+        } else if (g < 0 || g > 31) {
             const [block58_part1, block58_part2] = unstuff58bits(block_part1, block_part2);
             decompressBlockTHUMB58H(block58_part1, block58_part2, img, width, height, startx, starty);
-        } else if (blue < 0 || blue > 31) {
+        } else if (b < 0 || b > 31) {
             const [block57_part1, block57_part2] = unstuff57bits(block_part1, block_part2);
             decompressBlockPlanar57(block57_part1, block57_part2, img, width, height, startx, starty);
         } else {
@@ -1295,38 +1293,34 @@ function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img:
         // We have diffbit = 0, transparent pixels. Only T-, H- or regular diff-mode possible.
         
         // Base color
-        const color1 = new Int8Array(RGB);
-        color1[R] = GETBITSHI(block_part1, 5, 63);
-        color1[G] = GETBITSHI(block_part1, 5, 55);
-        color1[B] = GETBITSHI(block_part1, 5, 47);
+        let color1_R: int8 = GETBITSHI(block_part1, 5, 63);
+        let color1_G: int8 = GETBITSHI(block_part1, 5, 55);
+        let color1_B: int8 = GETBITSHI(block_part1, 5, 47);
 
         // Diff color
-        const diff = new Int8Array(RGB);
-        diff[R] = GETBITSHI(block_part1, 3, 58);
-        diff[G] = GETBITSHI(block_part1, 3, 50);
-        diff[B] = GETBITSHI(block_part1, 3, 42);
+        let diff_R: int8 = GETBITSHI(block_part1, 3, 58);
+        let diff_G: int8 = GETBITSHI(block_part1, 3, 50);
+        let diff_B: int8 = GETBITSHI(block_part1, 3, 42);
 
-        // Extend sign bit to entire byte. 
-        diff[R] = (diff[R] << 5);
-        diff[G] = (diff[G] << 5);
-        diff[B] = (diff[B] << 5);
-        diff[R] = diff[R] >> 5;
-        diff[G] = diff[G] >> 5;
-        diff[B] = diff[B] >> 5;
+        // Extend sign bit to entire byte.
+        if (diff_R >= 4) { diff_R -= 8; }
+        if (diff_G >= 4) { diff_G -= 8; }
+        if (diff_B >= 4) { diff_B -= 8; }
 
-        const red: int8   = color1[R] + diff[R];
-        const green: int8 = color1[G] + diff[G];
-        const blue: int8  = color1[B] + diff[B];
+        const r: int8 = color1_R + diff_R;
+        const g: int8 = color1_G + diff_G;
+        const b: int8 = color1_B + diff_B;
 
-        if (red < 0 || red > 31) {
+        if (r < 0 || r > 31) {
             const [block59_part1, block59_part2] = unstuff59bits(block_part1, block_part2);
             decompressBlockTHUMB59TAlpha(block59_part1, block59_part2, img, alphaimg, width, height, startx, starty);
-        } else if (green < 0 || green > 31) {
+        } else if (g < 0 || g > 31) {
             const [block58_part1, block58_part2] = unstuff58bits(block_part1, block_part2);
             decompressBlockTHUMB58HAlpha(block58_part1, block58_part2, img, alphaimg, width, height, startx, starty);
-        } else if (blue < 0 || blue > 31) {
+        } else if (b < 0 || b > 31) {
             const [block57_part1, block57_part2] = unstuff57bits(block_part1, block_part2);
             decompressBlockPlanar57(block57_part1, block57_part2, img, width, height, startx, starty);
+
             for (let x: int = startx; x < startx+4; x++) {
                 for (let y: int = starty; y < starty+4; y++) {
                     SET_ALPHA(alphaimg, x, y, width, 255);
@@ -1358,7 +1352,7 @@ function getbit(input: uint8, frompos: int, topos: int): uint8
 // However, a hardware decoder can share gates between the two formats as explained
 // in the specification under GL_COMPRESSED_R11_EAC.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockAlpha(data: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int): void
+export function decompressBlockAlpha(data: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
     const alpha: int = data[0];
     const table: int = data[1];
@@ -1367,8 +1361,8 @@ function decompressBlockAlpha(data: Uint8Array, alphaimg: Uint8Array, width: int
     let byte: int = 2;
     
     //extract an alpha value for each pixel.
-    for (let x: int = 0; x < BLOCK_WIDTH; x++) {
-        for (let y: int = 0; y < BLOCK_HEIGHT; y++) {
+    for (let x: int = 0; x < BLOCK_SIZE; x++) {
+        for (let y: int = 0; y < BLOCK_SIZE; y++) {
             //Extract table index
             let index: int = 0;
             for (let bitpos: int = 0; bitpos < 3; bitpos++) {
@@ -1383,6 +1377,57 @@ function decompressBlockAlpha(data: Uint8Array, alphaimg: Uint8Array, width: int
             SET_ALPHA(alphaimg, startx+x, starty+y, width, alpha + alphaTable[table][index]);
         }
     }
+}
+
+// Does decompression and then immediately converts from 11 bit signed to a 16-bit format.
+// 
+// NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
+function get16bits11signed(base: int, table: int, mul: int, index: int): int16
+{
+    let elevenbase: int = base - 128;
+    if (elevenbase === -128) {
+        elevenbase = -127;
+    }
+    elevenbase *= 8;
+
+    //i want the positive value here
+    let tabVal: int = -alphaBase[table][3-index%4] - 1;
+    //and the sign, please
+    const sign: boolean = (1-(index/4) !== 0);
+    if (sign) {
+        tabVal = tabVal + 1;
+    }
+    let elevenTabVal: int = tabVal * 8;
+    if (mul !== 0) {
+        elevenTabVal *= mul;
+    } else {
+        elevenTabVal /= 8;
+    }
+    if (sign) {
+        elevenTabVal = -elevenTabVal;
+    }
+
+    //calculate sum
+    let elevenbits: int = elevenbase + elevenTabVal;
+
+    //clamp..
+    if (elevenbits >= 1024) {
+        elevenbits = 1023;
+    } else if (elevenbits < -1023) {
+        elevenbits = -1023;
+    }
+    //this is the value we would actually output.. 
+    //but there aren't any good 11-bit file or uncompressed GL formats
+    //so we extend to 15 bits signed.
+    const sign2: boolean = (elevenbits < 0);
+    elevenbits = Math.abs(elevenbits);
+    let fifteenbits: int16 = (elevenbits<<5) + (elevenbits>>5);
+    let sixteenbits: int16 = fifteenbits;
+
+    if (sign2) {
+        sixteenbits = -sixteenbits;
+    }
+    return sixteenbits;
 }
 
 // Does decompression and then immediately converts from 11 bit signed to a 16-bit format 
@@ -1427,17 +1472,25 @@ function get16bits11bits(base: int, table: int, mul: int, index: int): uint16
 
 // Decompresses a block using one of the GL_COMPRESSED_R11_EAC or GL_COMPRESSED_SIGNED_R11_EAC-formats
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockAlpha16bit(data: Uint8Array, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+export function decompressBlockAlpha16bit(data: Uint8Array, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
     let alpha: uint8 = data[0];
     const table: uint8 = data[1];
+
+    if (formatSigned) {
+        //if we have a signed format, the base value is given as a signed byte. We convert it to (0-255) here,
+        //so more code can be shared with the unsigned mode.
+        const mem = new DataView(data.buffer, data.byteOffset, data.byteLength);
+        alpha = mem.getInt8(0);
+        alpha += 128;
+    }
 
     let bit: int = 0;
     let byte: int = 2;
 
     //extract an alpha value for each pixel.
-    for (let x: int = 0; x < BLOCK_WIDTH; x++) {
-        for (let y: int = 0; y < BLOCK_HEIGHT; y++) {
+    for (let x: int = 0; x < BLOCK_SIZE; x++) {
+        for (let y: int = 0; y < BLOCK_SIZE; y++) {
             //Extract table index
             let index: int = 0;
             for (let bitpos: int = 0; bitpos < 3; bitpos++) {
@@ -1451,8 +1504,12 @@ function decompressBlockAlpha16bit(data: Uint8Array, img: Uint8Array, width: int
 
             const windex: int = 2 * ARRAY_XY(width, startx+x, starty+y);
 
-            const memView = new DataView(img.buffer, img.byteOffset, img.byteLength);
-            memView.setUint16(windex, get16bits11bits(alpha, table % 16, table / 16, index), true);
+            const mem = new DataView(img.buffer, img.byteOffset, img.byteLength);
+            if (formatSigned) {
+                mem.setInt16(windex, get16bits11signed(alpha, table % 16, table / 16, index), true);
+            } else {
+                mem.setUint16(windex, get16bits11bits(alpha, table % 16, table / 16, index), true);
+            }
         }
     }			
 }

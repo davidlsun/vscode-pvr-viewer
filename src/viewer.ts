@@ -1,16 +1,17 @@
 import * as vscode from 'vscode';
 import sharp from 'sharp';
+import * as pvr from './pvr';
+import * as etc from './etcdec';
 
 async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
-    const headerSize = 52;
-
     // read fixed size header block
-    const header = new DataView(data.buffer, data.byteOffset, headerSize);
-    const magic = header.getUint32(0, true); // 55727696, 0x03525650
+    const header = new DataView(data.buffer, data.byteOffset, pvr.HEADER_SIZE);
+    const version = header.getUint32(0, true);
     const flags = header.getUint32(4, true); // 0 = no flags, 2 = pre-multiplied alpha
-    const pixelFormat = header.getBigUint64(8, true); // 22n (ETC2 RGB)
-    const colorSpace = header.getUint32(16, true); // 0 = linear rgb, 1 = srgb
-    const channelType = header.getUint32(20, true); // 0 = unsigned byte normalized
+    const pixelFormat = header.getUint32(8, true); // 22 (ETC2_RGB)
+    const pixelFormatHigh = header.getUint32(12, true); // 0
+    const colourSpace = header.getUint32(16, true);
+    const channelType = header.getUint32(20, true); // 0 (UnsignedByteNorm)
     const height = header.getUint32(24, true); // 512 pixels
     const width = header.getUint32(28, true); // 512 pixels
     const depth = header.getUint32(32, true); // 1 pixel
@@ -20,25 +21,33 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
     const metaDataSize = header.getUint32(48, true); // 0 bytes
 
     // read metadata, 0 or more key-value entries
-    const metadata = new DataView(data.buffer, data.byteOffset + headerSize, metaDataSize);
+    const metadata = new DataView(data.buffer, data.byteOffset + pvr.HEADER_SIZE, metaDataSize);
 
     // read bulk color data
-    const pbuf = new DataView(data.buffer, data.byteOffset + headerSize + metaDataSize, data.byteLength - headerSize - metaDataSize);
+    const blocks = new DataView(data.buffer, data.byteOffset + pvr.HEADER_SIZE + metaDataSize, data.byteLength - pvr.HEADER_SIZE - metaDataSize);
 
-    const channels = (pixelFormat === 22n && channelType === 0) ? 3 : 4;
+    const channels = 3;
+    const buf = new Uint8Array(width * height * channels);
 
-    const rbuf = new Uint8Array(width * height * channels);
+    etc.setupAlphaTable();
 
-    for (let y = 0; y < height; y++) {
-        for (let x = 0; x < width; x++) {
-            const i = (y * width + x) * channels;
-            rbuf[i + 0] = x;
-            rbuf[i + 1] = y;
-            rbuf[i + 2] = 0.0;
+    if (pixelFormat === pvr.PixelFormat.ETC2_RGB) {
+        let blockOffset = 0;
+        for (let y = 0; y < height; y += etc.BLOCK_SIZE) {
+            for (let x = 0; x < width; x += etc.BLOCK_SIZE) {
+                const block_part1 = blocks.getUint32(blockOffset + 0, false);
+                const block_part2 = blocks.getUint32(blockOffset + 4, false);
+                etc.decompressBlockETC2(block_part1, block_part2, buf, width, height, x, y);
+                blockOffset += 8;
+            }
         }
     }
 
-    const img = sharp(rbuf, { raw: { width: width, height: height, channels: channels } });
+    //etc.decompressBlockETC21BitAlpha();
+    //etc.decompressBlockAlpha();
+    //etc.decompressBlockAlpha16bit();
+
+    const img = sharp(buf, { raw: { width: width, height: height, channels: channels } });
     return await img.png().withMetadata().toBuffer();
 }
 

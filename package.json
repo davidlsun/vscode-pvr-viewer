@@ -51,7 +51,6 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
-    "sharp": "^0.32.6",
-    "twgl.js": "^5.5.3"
+    "sharp": "^0.32.6"
   }
 }
