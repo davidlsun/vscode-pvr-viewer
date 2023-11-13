@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import sharp from 'sharp';
 import * as pvr from './pvr';
-import * as etc from './etcdec';
+import * as etc from './etc';
 
 async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
     // read fixed size header block
