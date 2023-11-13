@@ -26,29 +26,19 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
     // read bulk color data
     const blocks = new DataView(data.buffer, data.byteOffset + pvr.HEADER_SIZE + metaDataSize, data.byteLength - pvr.HEADER_SIZE - metaDataSize);
 
-    const channels = 3;
-    const buf = new Uint8Array(width * height * channels);
-
-    etc.setupAlphaTable();
+    const buf = new Uint8Array(width * height * 4);
 
     if (pixelFormat === pvr.PixelFormat.ETC2_RGB) {
-        let blockOffset = 0;
-        for (let y = 0; y < height; y += etc.BLOCK_SIZE) {
-            for (let x = 0; x < width; x += etc.BLOCK_SIZE) {
-                const block_part1 = blocks.getUint32(blockOffset + 0, false);
-                const block_part2 = blocks.getUint32(blockOffset + 4, false);
-                etc.decompressBlockETC2(block_part1, block_part2, buf, width, height, x, y);
-                blockOffset += 8;
-            }
-        }
+        etc.decompressRGB(buf, blocks, width, height);
+    } else if (pixelFormat === pvr.PixelFormat.ETC2_RGBA) {
+        etc.decompressRGBA(buf, blocks, width, height);
     }
 
     //etc.decompressBlockETC21BitAlpha();
-    //etc.decompressBlockAlpha();
     //etc.decompressBlockAlpha16bit();
 
-    const img = sharp(buf, { raw: { width: width, height: height, channels: channels } });
-    return await img.png().withMetadata().toBuffer();
+    const image = sharp(buf, { raw: { width: width, height: height, channels: 4 } }).flip();
+    return await image.png().withMetadata().toBuffer();
 }
 
 class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDocument {
