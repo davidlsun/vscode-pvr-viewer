@@ -184,7 +184,7 @@ const PUTBITSLO = (dest: uint, data: uint, size: uint, start: uint): uint => ((d
 const PUTBITSHI = (dest: uint, data: uint, size: uint, start: uint): uint => ((dest & ~MASKHI(size, start)) | ((data << SHIFTHI(size, start)) & MASKHI(size, start)));
 
 // Thumb macros and definitions
-export const BLOCK_SIZE = 4;
+const BLOCK_SIZE = 4;
 const TABLE_BITS_59T = 3;
 const TABLE_BITS_58H = 3;
 
@@ -197,10 +197,6 @@ const B = 2;
 const SATURATE = (x: int): uint8 => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
 const ARRAY_XY = (width:int, x: int, y: int): int => (y * width + x);
 const SET_COLOR = (channel: int, img: Uint8Array, width: int, x: int, y: int, value: uint8): void => { img[ARRAY_XY(width, x, y) * 4 + channel] = SATURATE(value); };
-const SET_ALPHA = (alphaimg: Uint8Array, width: int, x: int, y: int, value: uint8): void => { alphaimg[ARRAY_XY(width, x, y)] = SATURATE(value); };
-
-// Global variables
-const formatSigned = false;
 
 // Global tables
 const unscramble = [2, 3, 1, 0];
@@ -260,9 +256,9 @@ function setupAlphaTable(): void
     }
 
     //read table used for alpha compression
-    for (let i: int = 0; i < 16; i++) {
-        for (let j: int = 0; j < 8; j++) {
-            let buf: int = alphaBase[i][3-j%4];
+    for (let i = 0; i < 16; i++) {
+        for (let j = 0; j < 8; j++) {
+            let buf = alphaBase[i][3-j%4];
             if (j < 4) {
                 alphaTable[i+16][j] = buf;
             } else {
@@ -272,11 +268,11 @@ function setupAlphaTable(): void
     }
 
     //beyond the first 16 values, the rest of the table is implicit.. so calculate that!
-    for (let i: int = 0; i < 256; i++) {
+    for (let i = 0; i < 256; i++) {
         //fill remaining slots in table with multiples of the first ones.
-        const mul: int = i / 16;
-        const old: int = 16 + i % 16;
-        for (let j: int = 0; j < 8; j++) {
+        const mul = i / 16;
+        const old = 16 + i % 16;
+        for (let j = 0; j < 8; j++) {
             alphaTable[i][j] = alphaTable[old][j] * mul;
             //note: we don't do clamping here, though we could, because we'll be clamped afterwards anyway.
         }
@@ -665,8 +661,8 @@ function decompressBlockPlanar57(compressed57_1: uint, compressed57_2: uint, img
     colorV[G] = (colorV[G] << 1) | (colorV[G] >> 6);
     colorV[B] = (colorV[B] << 2) | (colorV[B] >> 4);
 
-    for (let x: int = 0; x < BLOCK_SIZE; x++) {
-        for (let y: int = 0; y < BLOCK_SIZE; y++) {
+    for (let x = 0; x < BLOCK_SIZE; x++) {
+        for (let y = 0; y < BLOCK_SIZE; y++) {
             SET_COLOR(R, img, width, startx+x, starty+y, (x*(colorH[R]-colorO[R]) + y*(colorV[R]-colorO[R]) + 4*colorO[R] + 2) >> 2);
             SET_COLOR(G, img, width, startx+x, starty+y, (x*(colorH[G]-colorO[G]) + y*(colorV[G]-colorO[G]) + 4*colorO[G] + 2) >> 2);
             SET_COLOR(B, img, width, startx+x, starty+y, (x*(colorH[B]-colorO[B]) + y*(colorV[B]-colorO[B]) + 4*colorO[B] + 2) >> 2);
@@ -697,17 +693,17 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
         // while keeping the lower bits.
         const avg_color = decompressColor(avg_color4444);
 
-        let table: int = (GETBITSHI(block_part1, 3, 39) << 1);
+        let table = (GETBITSHI(block_part1, 3, 39) << 1);
         let pixel_indices_MSB: uint = GETBITSLO(block_part2, 16, 31);
         let pixel_indices_LSB: uint = GETBITSLO(block_part2, 16, 15);
 
         if (!flipbit)
         {
             // We should not flip
-            let shift: int = 0;
-            for (let x: int = startx; x < startx+2; x++) {
-                for (let y: int = starty; y < starty+4; y++) {
-                    let index: int = ((pixel_indices_MSB >> shift) & 1) << 1;
+            let shift = 0;
+            for (let x = startx; x < startx+2; x++) {
+                for (let y = starty; y < starty+4; y++) {
+                    let index = ((pixel_indices_MSB >> shift) & 1) << 1;
                     index |= ((pixel_indices_LSB >> shift) & 1);
                     shift++;
                     index = unscramble[index];
@@ -721,10 +717,10 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
         else
         {
             // We should flip
-            let shift: int = 0;
-            for (let x: int = startx; x < startx+4; x++) {
-                for (let y: int = starty; y < starty+2; y++) {
-                    let index: int = ((pixel_indices_MSB >> shift) & 1) << 1;
+            let shift = 0;
+            for (let x = startx; x < startx+4; x++) {
+                for (let y = starty; y < starty+2; y++) {
+                    let index = ((pixel_indices_MSB >> shift) & 1) << 1;
                     index |= ((pixel_indices_LSB >> shift) & 1);
                     shift++;
                     index = unscramble[index];
@@ -756,10 +752,10 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
         if (!flipbit)
         {
             // We should not flip
-            let shift: int = 8;
-            for (let x: int = startx+2; x < startx+4; x++) {
-                for (let y: int = starty; y < starty+4; y++) {
-                    let index: int = ((pixel_indices_MSB >> shift) & 1) << 1;
+            let shift = 8;
+            for (let x = startx+2; x < startx+4; x++) {
+                for (let y = starty; y < starty+4; y++) {
+                    let index = ((pixel_indices_MSB >> shift) & 1) << 1;
                     index |= ((pixel_indices_LSB >> shift) & 1);
                     shift++;
                     index = unscramble[index];
@@ -773,10 +769,10 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
         else
         {
             // We should flip
-            let shift: int = 2;
-            for (let x: int = startx; x < startx+4; x++) {
-                for (let y: int = starty+2; y < starty+4; y++) {
-                    let index: int = ((pixel_indices_MSB >> shift) & 1) << 1;
+            let shift = 2;
+            for (let x = startx; x < startx+4; x++) {
+                for (let y = starty+2; y < starty+4; y++) {
+                    let index = ((pixel_indices_MSB >> shift) & 1) << 1;
                     index |= ((pixel_indices_LSB >> shift) & 1);
                     shift++;
                     index = unscramble[index];
@@ -825,10 +821,10 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
         if (!flipbit)
         {
             // We should not flip
-            let shift: int = 0;
-            for (let x: int = startx; x < startx+2; x++) {
-                for (let y: int = starty; y < starty+4; y++) {
-                    let index: int = ((pixel_indices_MSB >> shift) & 1) << 1;
+            let shift = 0;
+            for (let x = startx; x < startx+2; x++) {
+                for (let y = starty; y < starty+4; y++) {
+                    let index = ((pixel_indices_MSB >> shift) & 1) << 1;
                     index |= ((pixel_indices_LSB >> shift) & 1);
                     shift++;
                     index = unscramble[index];
@@ -842,10 +838,10 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
         else
         {
             // We should flip
-            let shift: int = 0;
-            for (let x: int = startx; x < startx+4; x++) {
-                for (let y: int = starty; y < starty+2; y++) {
-                    let index: int = ((pixel_indices_MSB >> shift) & 1) << 1;
+            let shift = 0;
+            for (let x = startx; x < startx+4; x++) {
+                for (let y = starty; y < starty+2; y++) {
+                    let index = ((pixel_indices_MSB >> shift) & 1) << 1;
                     index |= ((pixel_indices_LSB >> shift) & 1);
                     shift++;
                     index = unscramble[index];
@@ -885,10 +881,10 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
         if (!flipbit)
         {
             // We should not flip
-            let shift: int = 8;
-            for (let x: int = startx+2; x < startx+4; x++) {
-                for (let y: int = starty; y < starty+4; y++) {
-                    let index: int = ((pixel_indices_MSB >> shift) & 1) << 1;
+            let shift = 8;
+            for (let x = startx+2; x < startx+4; x++) {
+                for (let y = starty; y < starty+4; y++) {
+                    let index = ((pixel_indices_MSB >> shift) & 1) << 1;
                     index |= ((pixel_indices_LSB >> shift) & 1);
                     shift++;
                     index = unscramble[index];
@@ -902,10 +898,10 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
         else
         {
             // We should flip
-            let shift: int = 2;
-            for (let x: int = startx; x < startx+4; x++) {
-                for (let y: int = starty+2; y < starty+4; y++) {
-                    let index: int = ((pixel_indices_MSB >> shift) & 1) << 1;
+            let shift = 2;
+            for (let x = startx; x < startx+4; x++) {
+                for (let y = starty+2; y < starty+4; y++) {
+                    let index = ((pixel_indices_MSB >> shift) & 1) << 1;
                     index |= ((pixel_indices_LSB >> shift) & 1);
                     shift++;
                     index = unscramble[index];
@@ -971,7 +967,7 @@ function decompressBlockETC2(block_part1: uint, block_part2: uint, img: Uint8Arr
 
 // Decompress an ETC2 block with punchthrough alpha
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
     //the diffbit now encodes whether or not the entire alpha channel is 255.
     const diffbit: boolean = (GETBITSHI(block_part1, 1, 33) !== 0);
@@ -994,15 +990,15 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
     if (!flipbit)
     {
         // We should not flip
-        let shift: int = 0;
-        for (let x: int = startx; x < startx+2; x++) {
-            for (let y: int = starty; y < starty+4; y++) {
-                let index: int = ((pixel_indices_MSB >> shift) & 1) << 1;
+        let shift = 0;
+        for (let x = startx; x < startx+2; x++) {
+            for (let y = starty; y < starty+4; y++) {
+                let index = ((pixel_indices_MSB >> shift) & 1) << 1;
                 index |= ((pixel_indices_LSB >> shift) & 1);
                 shift++;
                 index = unscramble[index];
 
-                let mod: int = compressParams[table][index];
+                let mod = compressParams[table][index];
                 if (!diffbit && (index === 1 || index === 2)) {
                     mod = 0;
                 }
@@ -1011,12 +1007,12 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
                     SET_COLOR(R, img, width, x, y, 0);
                     SET_COLOR(G, img, width, x, y, 0);
                     SET_COLOR(B, img, width, x, y, 0);
-                    SET_ALPHA(alphaimg, width, x, y, 0);
+                    SET_COLOR(3, img, width, x, y, 0);
                 } else {
                     SET_COLOR(R, img, width, x, y, avg_color[R] + mod);
                     SET_COLOR(G, img, width, x, y, avg_color[G] + mod);
                     SET_COLOR(B, img, width, x, y, avg_color[B] + mod);
-                    SET_ALPHA(alphaimg, width, x, y, 255);
+                    SET_COLOR(3, img, width, x, y, 255);
                 }
             }
         }
@@ -1024,15 +1020,15 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
     else
     {
         // We should flip
-        let shift: int = 0;
-        for (let x: int = startx; x < startx+4; x++) {
-            for (let y: int = starty; y < starty+2; y++) {
-                let index: int = ((pixel_indices_MSB >> shift) & 1) << 1;
+        let shift = 0;
+        for (let x = startx; x < startx+4; x++) {
+            for (let y = starty; y < starty+2; y++) {
+                let index = ((pixel_indices_MSB >> shift) & 1) << 1;
                 index |= ((pixel_indices_LSB >> shift) & 1);
                 shift++;
                 index = unscramble[index];
 
-                let mod: int = compressParams[table][index];
+                let mod = compressParams[table][index];
                 if (!diffbit && (index === 1 || index === 2)) {
                     mod = 0;
                 }
@@ -1041,12 +1037,12 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
                     SET_COLOR(R, img, width, x, y, 0);
                     SET_COLOR(G, img, width, x, y, 0);
                     SET_COLOR(B, img, width, x, y, 0);
-                    SET_ALPHA(alphaimg, width, x, y, 0);
+                    SET_COLOR(3, img, width, x, y, 0);
                 } else {
                     SET_COLOR(R, img, width, x, y, avg_color[R] + mod);
                     SET_COLOR(G, img, width, x, y, avg_color[G] + mod);
                     SET_COLOR(B, img, width, x, y, avg_color[B] + mod);
-                    SET_ALPHA(alphaimg, width, x, y, 255);
+                    SET_COLOR(3, img, width, x, y, 255);
                 }
             }
             shift += 2;
@@ -1080,15 +1076,15 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
     if (!flipbit)
     {
         // We should not flip
-        let shift: int = 8;
-        for (let x: int = startx+2; x < startx+4; x++) {
-            for (let y: int = starty; y < starty+4; y++) {
-                let index: int = ((pixel_indices_MSB >> shift) & 1) << 1;
+        let shift = 8;
+        for (let x = startx+2; x < startx+4; x++) {
+            for (let y = starty; y < starty+4; y++) {
+                let index = ((pixel_indices_MSB >> shift) & 1) << 1;
                 index |= ((pixel_indices_LSB >> shift) & 1);
                 shift++;
                 index = unscramble[index];
 
-                let mod: int = compressParams[table][index];
+                let mod = compressParams[table][index];
                 if (!diffbit && (index === 1 || index === 2)) {
                     mod = 0;
                 }
@@ -1097,12 +1093,12 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
                     SET_COLOR(R, img, width, x, y, 0);
                     SET_COLOR(G, img, width, x, y, 0);
                     SET_COLOR(B, img, width, x, y, 0);
-                    SET_ALPHA(alphaimg, width, x, y, 0);
+                    SET_COLOR(3, img, width, x, y, 0);
                 } else {
                     SET_COLOR(R, img, width, x, y, avg_color[R] + mod);
                     SET_COLOR(G, img, width, x, y, avg_color[G] + mod);
                     SET_COLOR(B, img, width, x, y, avg_color[B] + mod);
-                    SET_ALPHA(alphaimg, width, x, y, 255);
+                    SET_COLOR(3, img, width, x, y, 255);
                 }
             }
         }
@@ -1110,15 +1106,15 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
     else
     {
         // We should flip
-        let shift: int = 2;
-        for (let x: int = startx; x < startx+4; x++) {
-            for (let y: int = starty+2; y < starty+4; y++) {
-                let index: int = ((pixel_indices_MSB >> shift) & 1) << 1;
+        let shift = 2;
+        for (let x = startx; x < startx+4; x++) {
+            for (let y = starty+2; y < starty+4; y++) {
+                let index = ((pixel_indices_MSB >> shift) & 1) << 1;
                 index |= ((pixel_indices_LSB >> shift) & 1);
                 shift++;
                 index = unscramble[index];
 
-                let mod: int = compressParams[table][index];
+                let mod = compressParams[table][index];
                 if (!diffbit && (index === 1 || index === 2)) {
                     mod = 0;
                 }
@@ -1127,12 +1123,12 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
                     SET_COLOR(R, img, width, x, y, 0);
                     SET_COLOR(G, img, width, x, y, 0);
                     SET_COLOR(B, img, width, x, y, 0);
-                    SET_ALPHA(alphaimg, width, x, y, 0);
+                    SET_COLOR(3, img, width, x, y, 0);
                 } else {
                     SET_COLOR(R, img, width, x, y, avg_color[R] + mod);
                     SET_COLOR(G, img, width, x, y, avg_color[G] + mod);
                     SET_COLOR(B, img, width, x, y, avg_color[B] + mod);
-                    SET_ALPHA(alphaimg, width, x, y, 255);
+                    SET_COLOR(3, img, width, x, y, 255);
                 }
             }
             shift += 2;
@@ -1142,7 +1138,7 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
 
 // similar to regular decompression, but alpha channel is set to 0 if pixel index is 2, otherwise 255.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB59TAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB59TAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
     const dist: uint8 = GETBITSHI(block_part1, TABLE_BITS_59T, 34);
 
@@ -1171,12 +1167,12 @@ function decompressBlockTHUMB59TAlpha(block_part1: uint, block_part2: uint, img:
                 SET_COLOR(R, img, width, startx+x, starty+y, 0);
                 SET_COLOR(G, img, width, startx+x, starty+y, 0);
                 SET_COLOR(B, img, width, startx+x, starty+y, 0);
-                SET_ALPHA(alphaimg, width, startx+x, starty+y, 0);
+                SET_COLOR(3, img, width, startx+x, starty+y, 0);
             } else {
                 SET_COLOR(R, img, width, startx+x, starty+y, paint_colors[block_mask][R]);
                 SET_COLOR(G, img, width, startx+x, starty+y, paint_colors[block_mask][G]);
                 SET_COLOR(B, img, width, startx+x, starty+y, paint_colors[block_mask][B]);
-                SET_ALPHA(alphaimg, width, startx+x, starty+y, 255);
+                SET_COLOR(3, img, width, startx+x, starty+y, 255);
             }
         }
     }
@@ -1184,7 +1180,7 @@ function decompressBlockTHUMB59TAlpha(block_part1: uint, block_part2: uint, img:
 
 // Decompress an H-mode block with alpha
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB58HAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB58HAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
     let dist: uint8 = (GETBITSHI(block_part1, 2, 33) << 1);
     const col0: uint = GETBITSHI(block_part1, 12, 57);
@@ -1218,12 +1214,12 @@ function decompressBlockTHUMB58HAlpha(block_part1: uint, block_part2: uint, img:
                 SET_COLOR(R, img, width, startx+x, starty+y, 0);
                 SET_COLOR(G, img, width, startx+x, starty+y, 0);
                 SET_COLOR(B, img, width, startx+x, starty+y, 0);
-                SET_ALPHA(alphaimg, width, startx+x, starty+y, 0);
+                SET_COLOR(3, img, width, startx+x, starty+y, 0);
             } else {
                 SET_COLOR(R, img, width, startx+x, starty+y, paint_colors[block_mask][R]);
                 SET_COLOR(G, img, width, startx+x, starty+y, paint_colors[block_mask][G]);
                 SET_COLOR(B, img, width, startx+x, starty+y, paint_colors[block_mask][B]);
-                SET_ALPHA(alphaimg, width, startx+x, starty+y, 255);
+                SET_COLOR(3, img, width, startx+x, starty+y, 255);
             }
         }
     }
@@ -1231,7 +1227,7 @@ function decompressBlockTHUMB58HAlpha(block_part1: uint, block_part2: uint, img:
 
 // Decompression function for ETC2_RGBA1 format.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-export function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, alphaimg: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
     const diffbit: boolean = (GETBITSHI(block_part1, 1, 33) !== 0);
 
@@ -1268,12 +1264,12 @@ export function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uin
             const [block57_part1, block57_part2] = unstuff57bits(block_part1, block_part2);
             decompressBlockPlanar57(block57_part1, block57_part2, img, width, height, startx, starty);
         } else {
-            decompressBlockDifferentialWithAlpha(block_part1, block_part2, img, alphaimg, width, height, startx, starty);
+            decompressBlockDifferentialWithAlpha(block_part1, block_part2, img, width, height, startx, starty);
         }
 
-        for (let x: int = startx; x < startx+4; x++) {
-            for (let y: int = starty; y < starty+4; y++) {
-                SET_ALPHA(alphaimg, width, x, y, 255);
+        for (let x = startx; x < startx+4; x++) {
+            for (let y = starty; y < starty+4; y++) {
+                SET_COLOR(3, img, width, x, y, 255);
             }
         }
     }
@@ -1302,21 +1298,21 @@ export function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uin
 
         if (r < 0 || r > 31) {
             const [block59_part1, block59_part2] = unstuff59bits(block_part1, block_part2);
-            decompressBlockTHUMB59TAlpha(block59_part1, block59_part2, img, alphaimg, width, height, startx, starty);
+            decompressBlockTHUMB59TAlpha(block59_part1, block59_part2, img, width, height, startx, starty);
         } else if (g < 0 || g > 31) {
             const [block58_part1, block58_part2] = unstuff58bits(block_part1, block_part2);
-            decompressBlockTHUMB58HAlpha(block58_part1, block58_part2, img, alphaimg, width, height, startx, starty);
+            decompressBlockTHUMB58HAlpha(block58_part1, block58_part2, img, width, height, startx, starty);
         } else if (b < 0 || b > 31) {
             const [block57_part1, block57_part2] = unstuff57bits(block_part1, block_part2);
             decompressBlockPlanar57(block57_part1, block57_part2, img, width, height, startx, starty);
 
-            for (let x: int = startx; x < startx+4; x++) {
-                for (let y: int = starty; y < starty+4; y++) {
-                    SET_ALPHA(alphaimg, width, x, y, 255);
+            for (let x = startx; x < startx+4; x++) {
+                for (let y = starty; y < starty+4; y++) {
+                    SET_COLOR(3, img, width, x, y, 255);
                 }
             }
         } else {
-            decompressBlockDifferentialWithAlpha(block_part1, block_part2, img,alphaimg, width, height, startx, starty);
+            decompressBlockDifferentialWithAlpha(block_part1, block_part2, img, width, height, startx, starty);
         }
     }
 }
@@ -1349,11 +1345,11 @@ function decompressBlockAlpha(data: DataView, img: Uint8Array, width: int, heigh
     let bit = 0;
 
     //extract an alpha value for each pixel.
-    for (let x: int = 0; x < BLOCK_SIZE; x++) {
-        for (let y: int = 0; y < BLOCK_SIZE; y++) {
+    for (let x = 0; x < BLOCK_SIZE; x++) {
+        for (let y = 0; y < BLOCK_SIZE; y++) {
             //Extract table index
-            let index: int = 0;
-            for (let bitpos: int = 0; bitpos < 3; bitpos++) {
+            let index = 0;
+            for (let bitpos = 0; bitpos < 3; bitpos++) {
                 index |= getbit(data.getUint8(byte), 7-bit, 2-bitpos);
                 bit++;
                 if (bit > 7) {
@@ -1460,7 +1456,7 @@ function get16bits11bits(base: int, table: int, mul: int, index: int): uint16
 
 // Decompresses a block using one of the GL_COMPRESSED_R11_EAC or GL_COMPRESSED_SIGNED_R11_EAC-formats
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-export function decompressBlockAlpha16bit(data: DataView, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockAlpha16bit(channel: int, formatSigned: boolean, data: DataView, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
 {
     let alpha = data.getUint8(0);
     let table = data.getUint8(1);
@@ -1475,11 +1471,11 @@ export function decompressBlockAlpha16bit(data: DataView, img: Uint8Array, width
     }
 
     //extract an alpha value for each pixel.
-    for (let x: int = 0; x < BLOCK_SIZE; x++) {
-        for (let y: int = 0; y < BLOCK_SIZE; y++) {
+    for (let x = 0; x < BLOCK_SIZE; x++) {
+        for (let y = 0; y < BLOCK_SIZE; y++) {
             //Extract table index
-            let index: int = 0;
-            for (let bitpos: int = 0; bitpos < 3; bitpos++) {
+            let index = 0;
+            for (let bitpos = 0; bitpos < 3; bitpos++) {
                 index |= getbit(data.getUint8(byte), 7-bit, 2-bitpos);
                 bit++;
                 if (bit > 7) {
@@ -1488,19 +1484,18 @@ export function decompressBlockAlpha16bit(data: DataView, img: Uint8Array, width
                 }
             }
 
-            const windex: int = 2 * ARRAY_XY(width, startx+x, starty+y);
-
-            const mem = new DataView(img.buffer, img.byteOffset, img.byteLength);
             if (formatSigned) {
-                mem.setInt16(windex, get16bits11signed(alpha, table % 16, table / 16, index), true);
+                const value:uint16 = get16bits11signed(alpha, table % 16, table / 16, index);
+                SET_COLOR(channel, img, width, startx+x, starty+y, value >> 8);
             } else {
-                mem.setUint16(windex, get16bits11bits(alpha, table % 16, table / 16, index), true);
+                const value:uint16 = get16bits11bits(alpha, table % 16, table / 16, index);
+                SET_COLOR(channel, img, width, startx+x, starty+y, value >> 8);
             }
         }
     }
 }
 
-export function decompressRGB(dec: Uint8Array, enc: DataView, width: int, height: int): void
+export function decompress_ETC2_RGB(dec: Uint8Array, enc: DataView, width: int, height: int): void
 {
     let block_offset = 0;
     for (let y = 0; y < height; y += BLOCK_SIZE) {
@@ -1519,7 +1514,7 @@ export function decompressRGB(dec: Uint8Array, enc: DataView, width: int, height
     }
 }
 
-export function decompressRGBA(dec: Uint8Array, enc: DataView, width: int, height: int): void
+export function decompress_ETC2_RGBA(dec: Uint8Array, enc: DataView, width: int, height: int): void
 {
     setupAlphaTable();
 
@@ -1534,6 +1529,65 @@ export function decompressRGBA(dec: Uint8Array, enc: DataView, width: int, heigh
             const block_part2 = enc.getUint32(block_offset + 4, false);
             decompressBlockETC2(block_part1, block_part2, dec, width, height, x, y);
             block_offset += 8;
+        }
+    }
+}
+
+export function decompress_ETC2_RGB_A1(dec: Uint8Array, enc: DataView, width: int, height: int): void
+{
+    setupAlphaTable();
+
+    let block_offset = 0;
+    for (let y = 0; y < height; y += BLOCK_SIZE) {
+        for (let x = 0; x < width; x += BLOCK_SIZE) {
+            const block_part1 = enc.getUint32(block_offset + 0, false);
+            const block_part2 = enc.getUint32(block_offset + 4, false);
+            decompressBlockETC21BitAlpha(block_part1, block_part2, dec, width, height, x, y);
+            block_offset += 8;
+        }
+    }
+}
+
+export function decompress_EAC_R11(dec: Uint8Array, enc: DataView, width: int, height: int, signed: boolean): void
+{
+    setupAlphaTable();
+
+    let block_offset = 0;
+    for (let y = 0; y < height; y += BLOCK_SIZE) {
+        for (let x = 0; x < width; x += BLOCK_SIZE) {
+            const alpha_block = new DataView(enc.buffer, enc.byteOffset + block_offset, 8);
+            decompressBlockAlpha16bit(R, signed, alpha_block, dec, width, height, x, y);
+            block_offset += 8;
+        }
+    }
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            SET_COLOR(3, dec, width, x, y, 255);
+        }
+    }
+}
+
+export function decompress_EAC_RG11(dec: Uint8Array, enc: DataView, width: int, height: int, signed: boolean): void
+{
+    setupAlphaTable();
+
+    let block_offset = 0;
+    for (let y = 0; y < height; y += BLOCK_SIZE) {
+        for (let x = 0; x < width; x += BLOCK_SIZE) {
+            const alpha_block = new DataView(enc.buffer, enc.byteOffset + block_offset, 8);
+            decompressBlockAlpha16bit(R, signed, alpha_block, dec, width, height, x, y);
+            block_offset += 8;
+
+            const alpha_block_2 = new DataView(enc.buffer, enc.byteOffset + block_offset, 8);
+            decompressBlockAlpha16bit(G, signed, alpha_block_2, dec, width, height, x, y);
+            block_offset += 8;
+        }
+    }
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            SET_COLOR(3, dec, width, x, y, 255);
         }
     }
 }

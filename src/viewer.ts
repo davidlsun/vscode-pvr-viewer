@@ -8,10 +8,10 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
     const header = new DataView(data.buffer, data.byteOffset, pvr.HEADER_SIZE);
     const version = header.getUint32(0, true);
     const flags = header.getUint32(4, true); // 0 = no flags, 2 = pre-multiplied alpha
-    const pixelFormat = header.getUint32(8, true); // 22 (ETC2_RGB)
+    const pixelFormat:pvr.PixelFormat = header.getUint32(8, true);
     const pixelFormatHigh = header.getUint32(12, true); // 0
-    const colourSpace = header.getUint32(16, true);
-    const channelType = header.getUint32(20, true); // 0 (UnsignedByteNorm)
+    const colourSpace:pvr.ColourSpace = header.getUint32(16, true);
+    const channelType:pvr.VariableType = header.getUint32(20, true);
     const height = header.getUint32(24, true); // 512 pixels
     const width = header.getUint32(28, true); // 512 pixels
     const depth = header.getUint32(32, true); // 1 pixel
@@ -25,17 +25,25 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
 
     // read bulk color data
     const blocks = new DataView(data.buffer, data.byteOffset + pvr.HEADER_SIZE + metaDataSize, data.byteLength - pvr.HEADER_SIZE - metaDataSize);
-
     const buf = new Uint8Array(width * height * 4);
 
-    if (pixelFormat === pvr.PixelFormat.ETC2_RGB) {
-        etc.decompressRGB(buf, blocks, width, height);
-    } else if (pixelFormat === pvr.PixelFormat.ETC2_RGBA) {
-        etc.decompressRGBA(buf, blocks, width, height);
+    if (pixelFormat === pvr.PixelFormat.ETC1 && channelType === pvr.VariableType.UnsignedByteNorm && colourSpace === pvr.ColourSpace.Linear) {
+        etc.decompress_ETC2_RGB(buf, blocks, width, height);
+    } else if (pixelFormat === pvr.PixelFormat.ETC2_RGB && channelType === pvr.VariableType.UnsignedByteNorm) {
+        etc.decompress_ETC2_RGB(buf, blocks, width, height); // linear and srgb
+    } else if (pixelFormat === pvr.PixelFormat.ETC2_RGBA && channelType === pvr.VariableType.UnsignedByteNorm) {
+        etc.decompress_ETC2_RGBA(buf, blocks, width, height); // linear and srgb
+    } else if (pixelFormat === pvr.PixelFormat.ETC2_RGB_A1 && channelType === pvr.VariableType.UnsignedByteNorm) {
+        etc.decompress_ETC2_RGB_A1(buf, blocks, width, height); // linear and srgb
+    } else if (pixelFormat === pvr.PixelFormat.EAC_R11 && channelType === pvr.VariableType.UnsignedShortNorm && colourSpace === pvr.ColourSpace.Linear) {
+        etc.decompress_EAC_R11(buf, blocks, width, height, false);
+    } else if (pixelFormat === pvr.PixelFormat.EAC_R11 && channelType === pvr.VariableType.SignedShortNorm && colourSpace === pvr.ColourSpace.Linear) {
+        etc.decompress_EAC_R11(buf, blocks, width, height, true);
+    } else if (pixelFormat === pvr.PixelFormat.EAC_RG11 && channelType === pvr.VariableType.UnsignedIntegerNorm && colourSpace === pvr.ColourSpace.Linear) {
+        etc.decompress_EAC_RG11(buf, blocks, width, height, false);
+    } else if (pixelFormat === pvr.PixelFormat.EAC_RG11 && channelType === pvr.VariableType.SignedIntegerNorm && colourSpace === pvr.ColourSpace.Linear) {
+        etc.decompress_EAC_RG11(buf, blocks, width, height, true);
     }
-
-    //etc.decompressBlockETC21BitAlpha();
-    //etc.decompressBlockAlpha16bit();
 
     const image = sharp(buf, { raw: { width: width, height: height, channels: 4 } }).flip();
     return await image.png().withMetadata().toBuffer();
