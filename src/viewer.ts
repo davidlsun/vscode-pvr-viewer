@@ -3,16 +3,14 @@ import sharp from 'sharp';
 import * as pvr from './pvr';
 import * as pvrtc from './pvrtc';
 import * as etc from './etc';
-import { error } from 'console';
-import { exit } from 'process';
 
 async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
-    if (data.length < pvr.HEADER_SIZE) { throw error; }
+    if (data.length < pvr.HEADER_SIZE) { throw new Error(); }
 
     // read fixed size header block
     const header = new DataView(data.buffer, data.byteOffset, pvr.HEADER_SIZE);
     const version = header.getUint32(0, true);
-    if (version !== pvr.PVRTEX3_IDENT) { throw error; }
+    if (version !== pvr.PVRTEX3_IDENT) { throw new Error(); }
     const flags = header.getUint32(4, true); // 0 = no flags, 2 = pre-multiplied alpha
     const pixelFormat: pvr.PixelFormat = header.getUint32(8, true);
     const pixelFormatHigh = header.getUint32(12, true); // 0
@@ -58,32 +56,32 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
     switch (pixelFormat) {
         case pvr.PixelFormat.PVRTCI_2bpp_RGB:
             if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, true); // linear and srgb
+                pvrtc.decompress_PVRTC(decData, encData, width, height, true); // linear and srgb
             }
             break;
         case pvr.PixelFormat.PVRTCI_2bpp_RGBA:
             if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, true); // linear and srgb
+                pvrtc.decompress_PVRTC(decData, encData, width, height, true); // linear and srgb
             }
             break;
         case pvr.PixelFormat.PVRTCI_4bpp_RGB:
             if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, false); // linear and srgb
+                pvrtc.decompress_PVRTC(decData, encData, width, height, false); // linear and srgb
             }
             break;
         case pvr.PixelFormat.PVRTCI_4bpp_RGBA:
             if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, false); // linear and srgb
+                pvrtc.decompress_PVRTC(decData, encData, width, height, false); // linear and srgb
             }
             break;
         case pvr.PixelFormat.PVRTCII_2bpp:
             if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, true); // linear and srgb
+                pvrtc.decompress_PVRTC2(decData, encData, width, height, true); // linear and srgb
             }
             break;
         case pvr.PixelFormat.PVRTCII_4bpp:
             if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, false); // linear and srgb
+                pvrtc.decompress_PVRTC2(decData, encData, width, height, false); // linear and srgb
             }
             break;
         case pvr.PixelFormat.ETC1:

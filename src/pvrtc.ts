@@ -31,11 +31,14 @@ type PVRTCWordIndices =
     S_y: int
 };
 
+let PVRTC2_Mode = false;
+
 const SATURATE = (x: int): uint8 => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
 
 function getColorA(colorData: uint32): Pixel32
 {
-    if (colorData & (1 << 15)) {
+    const opacityFlag = colorData & (PVRTC2_Mode ? (1 << 31) : (1 << 15));
+    if (opacityFlag) {
         // Opaque Color Mode - RGB 554
         return new Uint8Array([
             (colorData & 0x7c00) >> 10, // 5->5 bits
@@ -56,7 +59,8 @@ function getColorA(colorData: uint32): Pixel32
 
 function getColorB(colorData: uint32): Pixel32
 {
-    if (colorData & (1 << 31)) {
+    const opacityFlag = colorData & (1 << 31);
+    if (opacityFlag) {
         // Opaque Color Mode - RGB 555
         return new Uint8Array([
             (colorData & 0x7c000000) >> 26, // 5->5 bits
@@ -70,12 +74,12 @@ function getColorB(colorData: uint32): Pixel32
             ((colorData & 0xf000000) >> 23) | ((colorData & 0xf000000) >> 27), // 4->5 bits
             ((colorData & 0xf00000) >> 19) | ((colorData & 0xf00000) >> 23), // 4->5 bits
             ((colorData & 0xf0000) >> 15) | ((colorData & 0xf0000) >> 19), // 4->5 bits
-            (colorData & 0x70000000) >> 27 // 3->4 bits - note 0 at right
+            ((colorData & 0x70000000) >> 27) | (PVRTC2_Mode ? 1 : 0) // 3->4 bits - note 0 or 1 at right
         ]);
     }
 }
 
-function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, pPixel: Int32Array[], do2bitMode: boolean): void
+function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, do2bitMode: boolean): Pixel128S[]
 {
     const wordWidth = (do2bitMode ? 8 : 4);
     const wordHeight = 4;
@@ -87,8 +91,8 @@ function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, pPixe
     let hS = new Int32Array([S[0], S[1], S[2], S[3]]);
 
     // Get vectors.
-    let QminusP = new Int32Array([hQ[0] - hP[0], hQ[1] - hP[1], hQ[2] - hP[2], hQ[3] - hP[3]]);
-    let SminusR = new Int32Array([hS[0] - hR[0], hS[1] - hR[1], hS[2] - hR[2], hS[3] - hR[3]]);
+    const QminusP = new Int32Array([hQ[0] - hP[0], hQ[1] - hP[1], hQ[2] - hP[2], hQ[3] - hP[3]]);
+    const SminusR = new Int32Array([hS[0] - hR[0], hS[1] - hR[1], hS[2] - hR[2], hS[3] - hR[3]]);
 
     // Multiply colors.
     hP[0] *= wordWidth;
@@ -100,6 +104,8 @@ function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, pPixe
     hR[1] *= wordWidth;
     hR[2] *= wordWidth;
     hR[3] *= wordWidth;
+
+    const pPixel = new Array<Pixel128S>(wordWidth * wordHeight);
 
     if (do2bitMode)
     {
@@ -169,62 +175,75 @@ function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, pPixe
             hR[3] += SminusR[3];
         }
     }
+
+    return pPixel;
 }
 
-function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulationValues: Int32Array[/*16*/], modulationModes: Int32Array[/*16*/], do2bitMode: boolean): void
+function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulationValues: Int32Array[], modulationModes: Int32Array[], do2bitMode: boolean): void
 {
-    let WordModMode: uint32 = word.colorData & 0x1;
-    let ModulationBits: uint32 = word.modulationData;
+    const modeFlag = word.colorData & (1 << 0);
+    const hardFlag = PVRTC2_Mode && ((word.colorData & (1 << 15)) !== 0);
+
+    if (!hardFlag && !modeFlag) { // standard bilinear interpolation
+    } else if (!hardFlag && modeFlag) { // punchthrough alpha
+    } else if (hardFlag && !modeFlag) { // non-interpolated
+        let a = 0;
+    } else if (hardFlag && modeFlag) { // local palette
+        let a = 0;
+    }
+
+    let modulationBits = word.modulationData;
 
     // Unpack differently depending on 2bpp or 4bpp modes.
     if (do2bitMode)
     {
-        if (WordModMode)
+        if (modeFlag)
         {
             // determine which of the three modes are in use:
+            let mode = 1;
 
             // If this is the either the H-only or V-only interpolation mode...
-            if (ModulationBits & 0x1)
+            if (modulationBits & 0x1)
             {
                 // look at the "LSB" for the "centre" (V=2,H=4) texel. Its LSB is now
                 // actually used to indicate whether it's the H-only mode or the V-only...
 
                 // The centre texel data is the at (y==2, x==4) and so its LSB is at bit 20.
-                if (ModulationBits & (0x1 << 20)) {
+                if (modulationBits & (1 << 20)) {
                     // This is the V-only mode
-                    WordModMode = 3;
+                    mode = 3;
                 } else {
                     // This is the H-only mode
-                    WordModMode = 2;
+                    mode = 2;
                 }
 
                 // Create an extra bit for the centre pixel so that it looks like
                 // we have 2 actual bits for this texel. It makes later coding much easier.
-                if (ModulationBits & (0x1 << 21)) {
+                if (modulationBits & (1 << 21)) {
                     // set it to produce code for 1.0
-                    ModulationBits |= (0x1 << 20);
+                    modulationBits |= (1 << 20);
                 } else {
                     // clear it to produce 0.0 code
-                    ModulationBits &= ~(0x1 << 20);
+                    modulationBits &= ~(1 << 20);
                 }
             }
 
-            if (ModulationBits & 0x2) {
-                ModulationBits |= 0x1; // set it
+            if (modulationBits & 0x2) {
+                modulationBits |= 0x1; // set it
             } else {
-                ModulationBits &= ~0x1; // clear it
+                modulationBits &= ~0x1; // clear it
             }
 
             // run through all the pixels in the block. Note we can now treat all the
             // "stored" values as if they have 2bits (even when they didn't!)
             for (let y = 0; y < 4; y++) {
                 for (let x = 0; x < 8; x++) {
-                    modulationModes[x + offsetX][y + offsetY] = WordModMode;
+                    modulationModes[x + offsetX][y + offsetY] = mode;
 
                     // if this is a stored value...
                     if (((x ^ y) & 1) === 0) {
-                        modulationValues[x + offsetX][y + offsetY] = ModulationBits & 3;
-                        ModulationBits >>= 2;
+                        modulationValues[x + offsetX][y + offsetY] = modulationBits & 3;
+                        modulationBits >>= 2;
                     }
                 }
             }
@@ -234,10 +253,10 @@ function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulati
         {
             for (let y = 0; y < 4; y++) {
                 for (let x = 0; x < 8; x++) {
-                    modulationModes[x + offsetX][y + offsetY] = WordModMode;
+                    modulationModes[x + offsetX][y + offsetY] = 0;
                     // double the bits so 0=> 00, and 1=>11
-                    modulationValues[x + offsetX][y + offsetY] = (ModulationBits & 1 ? 0x3 : 0x0);
-                    ModulationBits >>= 1;
+                    modulationValues[x + offsetX][y + offsetY] = (modulationBits & 1 ? 3 : 0);
+                    modulationBits >>= 1;
                 }
             }
         }
@@ -246,20 +265,19 @@ function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulati
     {
         // Much simpler than the 2bpp decompression, only two modes, so the n/8 values are set directly.
         // run through all the pixels in the word.
-        if (WordModMode)
+        if (modeFlag)
         {
             for (let y = 0; y < 4; y++) {
                 for (let x = 0; x < 4; x++) {
-                    modulationValues[y + offsetY][x + offsetX] = ModulationBits & 3;
-                    // if (modulationValues==0) {}. We don't need to check 0, 0 = 0/8.
-                    if (modulationValues[y + offsetY][x + offsetX] === 1) {
-                        modulationValues[y + offsetY][x + offsetX] = 4;
-                    } else if (modulationValues[y + offsetY][x + offsetX] === 2) {
-                        modulationValues[y + offsetY][x + offsetX] = 14; //+10 tells the decompressor to punch through alpha.
-                    } else if (modulationValues[y + offsetY][x + offsetX] === 3) {
-                        modulationValues[y + offsetY][x + offsetX] = 8;
+                    let weight = 0;
+                    switch (modulationBits & 3) {
+                        case 0: weight = 0; break;
+                        case 1: weight = 4; break;
+                        case 2: weight = 14; break; //+10 tells the decompressor to punch through alpha.
+                        case 3: weight = 8; break;
                     }
-                    ModulationBits >>= 2;
+                    modulationValues[y + offsetY][x + offsetX] = weight;
+                    modulationBits >>= 2;
                 }
             }
         }
@@ -267,53 +285,52 @@ function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulati
         {
             for (let y = 0; y < 4; y++) {
                 for (let x = 0; x < 4; x++) {
-                    modulationValues[y + offsetY][x + offsetX] = ModulationBits & 3;
-                    modulationValues[y + offsetY][x + offsetX] *= 3;
-                    if (modulationValues[y + offsetY][x + offsetX] > 3) {
-                        modulationValues[y + offsetY][x + offsetX] -= 1;
+                    let weight = 0;
+                    switch (modulationBits & 3) {
+                        case 0: weight = 0; break;
+                        case 1: weight = 3; break;
+                        case 2: weight = 5; break;
+                        case 3: weight = 8; break;
                     }
-                    ModulationBits >>= 2;
+                    modulationValues[y + offsetY][x + offsetX] = weight;
+                    modulationBits >>= 2;
                 }
             }
         }
     }
 }
 
-function getModulationValues(modulationValues: Int32Array[/*16*/], modulationModes: Int32Array[/*16*/], xPos: int, yPos: int, do2bitMode: boolean): int
+function getModulationValues(modulationValues: Int32Array[], modulationModes: Int32Array[], xPos: int, yPos: int, do2bitMode: boolean): int
 {
     if (do2bitMode)
     {
         const RepVals0 = [0, 3, 5, 8];
 
-        // extract the modulation value. If a simple encoding
-        if (modulationModes[xPos][yPos] === 0)
-        {
+        // extract the modulation value
+        const mode = modulationModes[xPos][yPos];
+        if (mode === 0) {
+            // simple encoding
             return RepVals0[modulationValues[xPos][yPos]];
-        }
-        else
-        {
-            // if this is a stored value
-            if (((xPos ^ yPos) & 1) === 0) {
-                return RepVals0[modulationValues[xPos][yPos]];
-            // else average from the neighbours
-            // if H&V interpolation...
-            } else if (modulationModes[xPos][yPos] === 1) {
-                return (
-                    RepVals0[modulationValues[xPos][yPos - 1]] +
-                    RepVals0[modulationValues[xPos][yPos + 1]] +
-                    RepVals0[modulationValues[xPos - 1][yPos]] +
-                    RepVals0[modulationValues[xPos + 1][yPos]] + 2) / 4;
-            // else if H-Only
-            } else if (modulationModes[xPos][yPos] === 2) {
-                return (
-                    RepVals0[modulationValues[xPos - 1][yPos]] +
-                    RepVals0[modulationValues[xPos + 1][yPos]] + 1) / 2;
-            // else it's V-Only
-            } else {
-                return (
-                    RepVals0[modulationValues[xPos][yPos - 1]] +
-                    RepVals0[modulationValues[xPos][yPos + 1]] + 1) / 2;
-            }
+        } else if (((xPos ^ yPos) & 1) === 0) {
+            // stored value (no average from the neighbours)
+            return RepVals0[modulationValues[xPos][yPos]];
+        } else if (mode === 1) {
+            // H&V interpolation
+            return (
+                RepVals0[modulationValues[xPos][yPos - 1]] +
+                RepVals0[modulationValues[xPos][yPos + 1]] +
+                RepVals0[modulationValues[xPos - 1][yPos]] +
+                RepVals0[modulationValues[xPos + 1][yPos]] + 2) / 4;
+        } else if (mode === 2) {
+            // H-Only
+            return (
+                RepVals0[modulationValues[xPos - 1][yPos]] +
+                RepVals0[modulationValues[xPos + 1][yPos]] + 1) / 2;
+        } else {
+            // V-Only
+            return (
+                RepVals0[modulationValues[xPos][yPos - 1]] +
+                RepVals0[modulationValues[xPos][yPos + 1]] + 1) / 2;
         }
     }
     else // 4bpp
@@ -324,20 +341,16 @@ function getModulationValues(modulationValues: Int32Array[/*16*/], modulationMod
 
 function pvrtcGetDecompressedPixels(P: PVRTCWord, Q: PVRTCWord, R: PVRTCWord, S: PVRTCWord, do2bitMode: boolean): Pixel32[]
 {
-    // 4bpp only needs 8*8 values, but 2bpp needs 16*8, so rather than wasting processor time we just statically allocate 16*8.
-    let modulationValues = new Array<Int32Array>(16);
-    let modulationModes = new Array<Int32Array>(16);
-    for (let i = 0; i < 16; i++) {
-        modulationValues[i] = new Int32Array(8);
-        modulationModes[i] = new Int32Array(8);
-    }
-    // Only 2bpp needs this.
-    // 4bpp only needs 16 values, but 2bpp needs 32, so rather than wasting processor time we just statically allocate 32.
-    let upscaledColorA = new Array<Pixel128S>(32);
-    let upscaledColorB = new Array<Pixel128S>(32);
-
     const wordWidth = (do2bitMode ? 8 : 4);
     const wordHeight = 4;
+
+    // 4bpp only needs 8*8 values, but 2bpp needs 16*8
+    let modulationValues = new Array<Int32Array>(wordWidth * 2);
+    let modulationModes = new Array<Int32Array>(wordWidth * 2);
+    for (let i = 0; i < wordWidth * 2; i++) {
+        modulationValues[i] = new Int32Array(wordHeight * 2);
+        modulationModes[i] = new Int32Array(wordHeight * 2);
+    }
 
     // Get the modulations from each word.
     unpackModulations(P, 0, 0, modulationValues, modulationModes, do2bitMode);
@@ -346,25 +359,27 @@ function pvrtcGetDecompressedPixels(P: PVRTCWord, Q: PVRTCWord, R: PVRTCWord, S:
     unpackModulations(S, wordWidth, wordHeight, modulationValues, modulationModes, do2bitMode);
 
     // Bilinear upscale image data from 2x2 -> 4x4
-    interpolateColors(getColorA(P.colorData), getColorA(Q.colorData), getColorA(R.colorData), getColorA(S.colorData), upscaledColorA, do2bitMode);
-    interpolateColors(getColorB(P.colorData), getColorB(Q.colorData), getColorB(R.colorData), getColorB(S.colorData), upscaledColorB, do2bitMode);
+    let upscaledColorA = interpolateColors(getColorA(P.colorData), getColorA(Q.colorData), getColorA(R.colorData), getColorA(S.colorData), do2bitMode);
+    let upscaledColorB = interpolateColors(getColorB(P.colorData), getColorB(Q.colorData), getColorB(R.colorData), getColorB(S.colorData), do2bitMode);
 
     const pColorData = Array<Pixel32>(wordWidth * wordHeight);
 
     for (let y = 0; y < wordHeight; y++) {
         for (let x = 0; x < wordWidth; x++) {
-            let mod = getModulationValues(modulationValues, modulationModes, x + wordWidth / 2, y + wordHeight / 2, do2bitMode);
+            let weight = getModulationValues(modulationValues, modulationModes, x + wordWidth / 2, y + wordHeight / 2, do2bitMode);
             let punchthroughAlpha: boolean = false;
-            if (mod > 10) {
+            if (weight > 10) {
                 punchthroughAlpha = true;
-                mod -= 10;
+                weight -= 10;
             }
 
+            const colorA = upscaledColorA[y * wordWidth + x];
+            const colorB = upscaledColorB[y * wordWidth + x];
             let result = new Int32Array([
-                (upscaledColorA[y * wordWidth + x][0] * (8 - mod) + upscaledColorB[y * wordWidth + x][0] * mod) / 8,
-                (upscaledColorA[y * wordWidth + x][1] * (8 - mod) + upscaledColorB[y * wordWidth + x][1] * mod) / 8,
-                (upscaledColorA[y * wordWidth + x][2] * (8 - mod) + upscaledColorB[y * wordWidth + x][2] * mod) / 8,
-                punchthroughAlpha ? 0 : (upscaledColorA[y * wordWidth + x][3] * (8 - mod) + upscaledColorB[y * wordWidth + x][3] * mod) / 8
+                PVRTC2_Mode && punchthroughAlpha ? 0 : (colorA[0] * (8 - weight) + colorB[0] * weight) / 8,
+                PVRTC2_Mode && punchthroughAlpha ? 0 : (colorA[1] * (8 - weight) + colorB[1] * weight) / 8,
+                PVRTC2_Mode && punchthroughAlpha ? 0 : (colorA[2] * (8 - weight) + colorB[2] * weight) / 8,
+                punchthroughAlpha ? 0 : (colorA[3] * (8 - weight) + colorB[3] * weight) / 8
             ]);
 
             // Convert the 32bit precision Result to 8 bit per channel color.
@@ -395,6 +410,10 @@ const isPowerOf2 = (v: int): boolean => (v !== 0 && !(v & (v - 1)));
 
 function TwiddleUV(XSize: int, YSize: int, XPos: int, YPos: int): int
 {
+    if (PVRTC2_Mode) {
+        return YPos * XSize + XPos;
+    }
+
     // Initially assume X is the larger size.
     let MinDimension = XSize;
     let MaxValue = YPos;
@@ -474,20 +493,20 @@ function pvrtcDecompress(pDecompressedData: Uint8Array, pCompressedData: DataVie
     const i32NumYWords = height / wordHeight;
 
     // For each row of words
-    for (let wordY = -1; wordY < i32NumYWords - 1; wordY++)
+    for (let wordY = 0; wordY < i32NumYWords; wordY++)
     {
         // for each column of words
-        for (let wordX = -1; wordX < i32NumXWords - 1; wordX++)
+        for (let wordX = 0; wordX < i32NumXWords; wordX++)
         {
             const indices: PVRTCWordIndices = {
-                P_x: wrapWordIndex(i32NumXWords, wordX),
-                P_y: wrapWordIndex(i32NumYWords, wordY),
-                Q_x: wrapWordIndex(i32NumXWords, wordX + 1),
-                Q_y: wrapWordIndex(i32NumYWords, wordY),
-                R_x: wrapWordIndex(i32NumXWords, wordX),
-                R_y: wrapWordIndex(i32NumYWords, wordY + 1),
-                S_x: wrapWordIndex(i32NumXWords, wordX + 1),
-                S_y: wrapWordIndex(i32NumYWords, wordY + 1)
+                P_x: wrapWordIndex(i32NumXWords, wordX - 1),
+                P_y: wrapWordIndex(i32NumYWords, wordY - 1),
+                Q_x: wrapWordIndex(i32NumXWords, wordX),
+                Q_y: wrapWordIndex(i32NumYWords, wordY - 1),
+                R_x: wrapWordIndex(i32NumXWords, wordX - 1),
+                R_y: wrapWordIndex(i32NumYWords, wordY),
+                S_x: wrapWordIndex(i32NumXWords, wordX),
+                S_y: wrapWordIndex(i32NumYWords, wordY)
             };
 
             // Work out the offsets into the twiddle structs, multiply by eight as there are eight bytes per word.
@@ -521,7 +540,7 @@ function pvrtcDecompress(pDecompressedData: Uint8Array, pCompressedData: DataVie
     }
 }
 
-export function PVRTDecompressPVRTC(pResultImage: Uint8Array, pCompressedData: DataView, width: int, height: int, do2bitMode: boolean): void
+export function decompress_PVRTC(pResultImage: Uint8Array, pCompressedData: DataView, width: int, height: int, do2bitMode: boolean): void
 {
     // Cast the output buffer to a Pixel32 pointer.
     let pDecompressedData = pResultImage;
@@ -549,4 +568,11 @@ export function PVRTDecompressPVRTC(pResultImage: Uint8Array, pCompressedData: D
             }
         }
     }
+}
+
+export function decompress_PVRTC2(pResultImage: Uint8Array, pCompressedData: DataView, width: int, height: int, do2bitMode: boolean): void
+{
+    PVRTC2_Mode = true;
+    decompress_PVRTC(pResultImage, pCompressedData, width, height, do2bitMode);
+    PVRTC2_Mode = false;
 }
