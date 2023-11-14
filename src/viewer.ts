@@ -1,8 +1,16 @@
 import * as vscode from 'vscode';
-import sharp from 'sharp';
+import sharp, { SharpOptions } from 'sharp';
 import * as pvr from './pvr';
 import * as pvrtc from './pvrtc';
 import * as etc from './etc';
+
+function srgbToLinear(x: number): number {
+    return x <= 0.04045 ? x * 0.0773993808 : Math.pow((x + 0.055) / 1.055, 2.4);
+}
+
+function linearToSrgb(x: number): number {
+    return x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 0.41666) - 0.055;
+}
 
 async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
     if (data.length < pvr.HEADER_SIZE) { throw new Error(); }
@@ -24,8 +32,9 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
     const mipMapCount = header.getUint32(44, true); // 1 mip only
     const metaDataSize = header.getUint32(48, true); // 0 bytes
 
+    const premultiplied = ((flags & pvr.PVRTEX3_PREMULTIPLIED) !== 0);
     let flipX = false;
-    let flipY = true;
+    let flipY = false;
     let flipZ = false;
 
     // read metadata, 0 or more key-value entries
@@ -146,8 +155,26 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
             break;
     }
 
-    const image = sharp(decData, { raw: { width: width, height: height, channels: 4 } }).flip(flipY);
-    return await image.png().withMetadata().toBuffer();
+    if (colourSpace === pvr.ColourSpace.Linear) {
+        for (let y = 0; y < width; y++) {
+            for (let x = 0; x < width; x++) {
+                const i = (y * width + x) * 4;
+                for (let c = 0; c < 3; c++) {
+                    decData[i + c] = Math.round(linearToSrgb(decData[i + c] / 255.0) * 255.0);
+                }
+            }
+        }
+    }
+
+    const options:SharpOptions = { raw: { width: width, height: height, channels: 4, premultiplied: premultiplied } };
+    const image = sharp(decData, options);
+    return await image
+        .flip(flipY)
+        .flop(flipX)
+        .png({ compressionLevel: 0 })
+        .toColourspace('srgb')
+        .withMetadata()
+        .toBuffer();
 }
 
 class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDocument {
@@ -214,12 +241,13 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
         const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
         const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
         const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
+        const documentUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'a.png'));
 
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self' data:; style-src ${webview.cspSource};">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src * data:; style-src ${webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="${styleResetUri}" rel="stylesheet>
     <link href="${styleVSCodeUri}" rel="stylesheet>
