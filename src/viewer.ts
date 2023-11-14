@@ -30,18 +30,34 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
 
     switch (pixelFormat) {
         case pvr.PixelFormat.PVRTCI_2bpp_RGB:
+            if (channelType === pvr.VariableType.UnsignedByteNorm) {
+                pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, true); // linear and srgb
+            }
             break;
         case pvr.PixelFormat.PVRTCI_2bpp_RGBA:
+            if (channelType === pvr.VariableType.UnsignedByteNorm) {
+                pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, true); // linear and srgb
+            }
             break;
         case pvr.PixelFormat.PVRTCI_4bpp_RGB:
-            pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, false);
+            if (channelType === pvr.VariableType.UnsignedByteNorm) {
+                pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, false); // linear and srgb
+            }
             break;
         case pvr.PixelFormat.PVRTCI_4bpp_RGBA:
-            pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, false);
+            if (channelType === pvr.VariableType.UnsignedByteNorm) {
+                pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, false); // linear and srgb
+            }
             break;
         case pvr.PixelFormat.PVRTCII_2bpp:
+            if (channelType === pvr.VariableType.UnsignedByteNorm) {
+                pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, true); // linear and srgb
+            }
             break;
         case pvr.PixelFormat.PVRTCII_4bpp:
+            if (channelType === pvr.VariableType.UnsignedByteNorm) {
+                pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, false); // linear and srgb
+            }
             break;
         case pvr.PixelFormat.ETC1:
             if (channelType === pvr.VariableType.UnsignedByteNorm && colourSpace === pvr.ColourSpace.Linear) {
@@ -84,12 +100,24 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
             }
             break;
         case pvr.PixelFormat.PVRTCI_HDR_6bpp:
+            if (channelType === pvr.VariableType.SignedFloat && colourSpace === pvr.ColourSpace.Linear) {
+                // ...
+            }
             break;
         case pvr.PixelFormat.PVRTCI_HDR_8bpp:
+            if (channelType === pvr.VariableType.SignedFloat && colourSpace === pvr.ColourSpace.Linear) {
+                // ...
+            }
             break;
         case pvr.PixelFormat.PVRTCII_HDR_6bpp:
+            if (channelType === pvr.VariableType.SignedFloat && colourSpace === pvr.ColourSpace.Linear) {
+                // ...
+            }
             break;
         case pvr.PixelFormat.PVRTCII_HDR_8bpp:
+            if (channelType === pvr.VariableType.SignedFloat && colourSpace === pvr.ColourSpace.Linear) {
+                // ...
+            }
             break;
     }
 

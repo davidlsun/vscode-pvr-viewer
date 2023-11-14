@@ -175,7 +175,7 @@ function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, pPixe
     }
 }
 
-function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulationValues: int[/*16*/][/*8*/], modulationModes: int[/*16*/][/*8*/], do2bitMode: boolean): void
+function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulationValues: Int32Array[/*16*/], modulationModes: Int32Array[/*16*/], do2bitMode: boolean): void
 {
     let WordModMode: uint32 = word.colorData & 0x1;
     let ModulationBits: uint32 = word.modulationData;
@@ -283,7 +283,7 @@ function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulati
     }
 }
 
-function getModulationValues(modulationValues: int[/*16*/][/*8*/], modulationModes: int[/*16*/][/*8*/], xPos: int, yPos: int, do2bitMode: boolean): int
+function getModulationValues(modulationValues: Int32Array[/*16*/], modulationModes: Int32Array[/*16*/], xPos: int, yPos: int, do2bitMode: boolean): int
 {
     if (do2bitMode)
     {
@@ -329,11 +329,11 @@ function getModulationValues(modulationValues: int[/*16*/][/*8*/], modulationMod
 function pvrtcGetDecompressedPixels(P: PVRTCWord, Q: PVRTCWord, R: PVRTCWord, S: PVRTCWord, do2bitMode: boolean): Pixel32[]
 {
     // 4bpp only needs 8*8 values, but 2bpp needs 16*8, so rather than wasting processor time we just statically allocate 16*8.
-    let modulationValues = new Array<Array<int>>(16);
-    let modulationModes = new Array<Array<int>>(16);
-    for (let i = 0; i < 8; i++) {
-        modulationValues[i] = new Array<int>(8);
-        modulationModes[i] = new Array<int>(8);
+    let modulationValues = new Array<Int32Array>(16);
+    let modulationModes = new Array<Int32Array>(16);
+    for (let i = 0; i < 16; i++) {
+        modulationValues[i] = new Int32Array(8);
+        modulationModes[i] = new Int32Array(8);
     }
     // Only 2bpp needs this.
     // 4bpp only needs 16 values, but 2bpp needs 32, so rather than wasting processor time we just statically allocate 32.
