@@ -6,18 +6,12 @@
 */
 //!\cond NO_DOXYGEN
 
+type uint8 = number;
 type int = number;
 type uint32 = number;
 
 type Pixel32 = Uint8Array;
-
-type Pixel128S =
-{
-    R: int,
-    G: int,
-    B: int,
-    A: int
-};
+type Pixel128S = Int32Array;
 
 type PVRTCWord =
 {
@@ -37,9 +31,11 @@ type PVRTCWordIndices =
     S_y: int
 };
 
+const SATURATE = (x: int): uint8 => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
+
 function getColorA(colorData: uint32): Pixel32
 {
-    if ((colorData & 0x8000) !== 0) {
+    if (colorData & (1 << 15)) {
         // Opaque Color Mode - RGB 554
         return new Uint8Array([
             (colorData & 0x7c00) >> 10, // 5->5 bits
@@ -60,13 +56,13 @@ function getColorA(colorData: uint32): Pixel32
 
 function getColorB(colorData: uint32): Pixel32
 {
-    if (colorData & 0x80000000) {
+    if (colorData & (1 << 31)) {
         // Opaque Color Mode - RGB 555
         return new Uint8Array([
             (colorData & 0x7c000000) >> 26, // 5->5 bits
             (colorData & 0x3e00000) >> 21, // 5->5 bits
             (colorData & 0x1f0000) >> 16, // 5->5 bits
-            0xf // 0 bits
+            0xf // 0->4 bits
         ]);
     } else {
         // Transparent Color Mode - ARGB 3444
@@ -79,64 +75,64 @@ function getColorB(colorData: uint32): Pixel32
     }
 }
 
-function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, pPixel: Pixel128S[], do2bitMode: boolean): void
+function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, pPixel: Int32Array[], do2bitMode: boolean): void
 {
     const wordWidth = (do2bitMode ? 8 : 4);
     const wordHeight = 4;
 
     // Convert to int 32.
-    let hP: Pixel128S = { R: P[0], G: P[1], B: P[2], A: P[3] };
-    let hQ: Pixel128S = { R: Q[0], G: Q[1], B: Q[2], A: Q[3] };
-    let hR: Pixel128S = { R: R[0], G: R[1], B: R[2], A: R[3] };
-    let hS: Pixel128S = { R: S[0], G: S[1], B: S[2], A: S[3] };
+    let hP = new Int32Array([P[0], P[1], P[2], P[3]]);
+    let hQ = new Int32Array([Q[0], Q[1], Q[2], Q[3]]);
+    let hR = new Int32Array([R[0], R[1], R[2], R[3]]);
+    let hS = new Int32Array([S[0], S[1], S[2], S[3]]);
 
     // Get vectors.
-    let QminusP: Pixel128S = { R: hQ.R - hP.R, G: hQ.G - hP.G, B: hQ.B - hP.B, A: hQ.A - hP.A };
-    let SminusR: Pixel128S = { R: hS.R - hR.R, G: hS.G - hR.G, B: hS.B - hR.B, A: hS.A - hR.A };
+    let QminusP = new Int32Array([hQ[0] - hP[0], hQ[1] - hP[1], hQ[2] - hP[2], hQ[3] - hP[3]]);
+    let SminusR = new Int32Array([hS[0] - hR[0], hS[1] - hR[1], hS[2] - hR[2], hS[3] - hR[3]]);
 
     // Multiply colors.
-    hP.R *= wordWidth;
-    hP.G *= wordWidth;
-    hP.B *= wordWidth;
-    hP.A *= wordWidth;
+    hP[0] *= wordWidth;
+    hP[1] *= wordWidth;
+    hP[2] *= wordWidth;
+    hP[3] *= wordWidth;
 
-    hR.R *= wordWidth;
-    hR.G *= wordWidth;
-    hR.B *= wordWidth;
-    hR.A *= wordWidth;
+    hR[0] *= wordWidth;
+    hR[1] *= wordWidth;
+    hR[2] *= wordWidth;
+    hR[3] *= wordWidth;
 
     if (do2bitMode)
     {
         // Loop through pixels to achieve results.
         for (let x = 0; x < wordWidth; x++)
         {
-            let result: Pixel128S = { R: 4 * hP.R, G: 4 * hP.G, B: 4 * hP.B, A: 4 * hP.A };
-            let dY: Pixel128S = { R: hR.R - hP.R, G: hR.G - hP.G, B: hR.B - hP.B, A: hR.A - hP.A };
+            let result = new Int32Array([4 * hP[0], 4 * hP[1], 4 * hP[2], 4 * hP[3]]);
+            let dY = new Int32Array([hR[0] - hP[0], hR[1] - hP[1], hR[2] - hP[2], hR[3] - hP[3]]);
 
             for (let y = 0; y < wordHeight; y++)
             {
-                pPixel[y * wordWidth + x] = {
-                    R: (result.R >> 7) + (result.R >> 2),
-                    G: (result.G >> 7) + (result.G >> 2),
-                    B: (result.B >> 7) + (result.B >> 2),
-                    A: (result.A >> 5) + (result.A >> 1)
-                };
+                pPixel[y * wordWidth + x] = new Int32Array([
+                    (result[0] >> 7) + (result[0] >> 2),
+                    (result[1] >> 7) + (result[1] >> 2),
+                    (result[2] >> 7) + (result[2] >> 2),
+                    (result[3] >> 5) + (result[3] >> 1)
+                ]);
 
-                result.R += dY.R;
-                result.G += dY.G;
-                result.B += dY.B;
-                result.A += dY.A;
+                result[0] += dY[0];
+                result[1] += dY[1];
+                result[2] += dY[2];
+                result[3] += dY[3];
             }
 
-            hP.R += QminusP.R;
-            hP.G += QminusP.G;
-            hP.B += QminusP.B;
-            hP.A += QminusP.A;
+            hP[0] += QminusP[0];
+            hP[1] += QminusP[1];
+            hP[2] += QminusP[2];
+            hP[3] += QminusP[3];
 
-            hR.R += SminusR.R;
-            hR.G += SminusR.G;
-            hR.B += SminusR.B;
-            hR.A += SminusR.A;
+            hR[0] += SminusR[0];
+            hR[1] += SminusR[1];
+            hR[2] += SminusR[2];
+            hR[3] += SminusR[3];
         }
     }
     else // 4bpp
@@ -144,33 +140,33 @@ function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, pPixe
         // Loop through pixels to achieve results.
         for (let y = 0; y < wordHeight; y++)
         {
-            let result: Pixel128S = { R: 4 * hP.R, G: 4 * hP.G, B: 4 * hP.B, A: 4 * hP.A };
-            let dY: Pixel128S = { R: hR.R - hP.R, G: hR.G - hP.G, B: hR.B - hP.B, A: hR.A - hP.A };
+            let result = new Int32Array([4 * hP[0], 4 * hP[1], 4 * hP[2], 4 * hP[3]]);
+            let dY = new Int32Array([hR[0] - hP[0], hR[1] - hP[1], hR[2] - hP[2], hR[3] - hP[3]]);
 
             for (let x = 0; x < wordWidth; x++)
             {
-                pPixel[y * wordWidth + x] = {
-                    R: (result.R >> 6) + (result.R >> 1),
-                    G: (result.G >> 6) + (result.G >> 1),
-                    B: (result.B >> 6) + (result.B >> 1),
-                    A: (result.A >> 4) + (result.A >> 0)
-                };
+                pPixel[y * wordWidth + x] = new Int32Array([
+                    (result[0] >> 6) + (result[0] >> 1),
+                    (result[1] >> 6) + (result[1] >> 1),
+                    (result[2] >> 6) + (result[2] >> 1),
+                    (result[3] >> 4) + (result[3] >> 0)
+                ]);
 
-                result.R += dY.R;
-                result.G += dY.G;
-                result.B += dY.B;
-                result.A += dY.A;
+                result[0] += dY[0];
+                result[1] += dY[1];
+                result[2] += dY[2];
+                result[3] += dY[3];
             }
 
-            hP.R += QminusP.R;
-            hP.G += QminusP.G;
-            hP.B += QminusP.B;
-            hP.A += QminusP.A;
+            hP[0] += QminusP[0];
+            hP[1] += QminusP[1];
+            hP[2] += QminusP[2];
+            hP[3] += QminusP[3];
 
-            hR.R += SminusR.R;
-            hR.G += SminusR.G;
-            hR.B += SminusR.B;
-            hR.A += SminusR.A;
+            hR[0] += SminusR[0];
+            hR[1] += SminusR[1];
+            hR[2] += SminusR[2];
+            hR[3] += SminusR[3];
         }
     }
 }
@@ -364,27 +360,27 @@ function pvrtcGetDecompressedPixels(P: PVRTCWord, Q: PVRTCWord, R: PVRTCWord, S:
                 mod -= 10;
             }
 
-            let result: Pixel128S = {
-                R: (upscaledColorA[y * wordWidth + x].R * (8 - mod) + upscaledColorB[y * wordWidth + x].R * mod) / 8,
-                G: (upscaledColorA[y * wordWidth + x].G * (8 - mod) + upscaledColorB[y * wordWidth + x].G * mod) / 8,
-                B: (upscaledColorA[y * wordWidth + x].B * (8 - mod) + upscaledColorB[y * wordWidth + x].B * mod) / 8,
-                A: punchthroughAlpha ? 0 : (upscaledColorA[y * wordWidth + x].A * (8 - mod) + upscaledColorB[y * wordWidth + x].A * mod) / 8
-            };
+            let result = new Int32Array([
+                (upscaledColorA[y * wordWidth + x][0] * (8 - mod) + upscaledColorB[y * wordWidth + x][0] * mod) / 8,
+                (upscaledColorA[y * wordWidth + x][1] * (8 - mod) + upscaledColorB[y * wordWidth + x][1] * mod) / 8,
+                (upscaledColorA[y * wordWidth + x][2] * (8 - mod) + upscaledColorB[y * wordWidth + x][2] * mod) / 8,
+                punchthroughAlpha ? 0 : (upscaledColorA[y * wordWidth + x][3] * (8 - mod) + upscaledColorB[y * wordWidth + x][3] * mod) / 8
+            ]);
 
             // Convert the 32bit precision Result to 8 bit per channel color.
             if (do2bitMode) {
                 pColorData[y * wordWidth + x] = new Uint8Array([
-                    result.R,
-                    result.G,
-                    result.B,
-                    result.A
+                    SATURATE(result[0]),
+                    SATURATE(result[1]),
+                    SATURATE(result[2]),
+                    SATURATE(result[3])
                 ]);
             } else { // 4bpp
                 pColorData[y + x * wordHeight] = new Uint8Array([
-                    result.R,
-                    result.G,
-                    result.B,
-                    result.A
+                    SATURATE(result[0]),
+                    SATURATE(result[1]),
+                    SATURATE(result[2]),
+                    SATURATE(result[3])
                 ]);
             }
         }
