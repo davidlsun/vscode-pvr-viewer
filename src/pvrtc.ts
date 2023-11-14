@@ -494,28 +494,28 @@ function pvrtcDecompress(pDecompressedData: Uint8Array, pCompressedData: DataVie
                 S_y: wrapWordIndex(i32NumYWords, wordY + 1)
             };
 
-            // Work out the offsets into the twiddle structs, multiply by two as there are two members per word.
-            const WordOffset_P = TwiddleUV(i32NumXWords, i32NumYWords, indices.P_x, indices.P_y) * 2;
-            const WordOffset_Q = TwiddleUV(i32NumXWords, i32NumYWords, indices.Q_x, indices.Q_y) * 2;
-            const WordOffset_R = TwiddleUV(i32NumXWords, i32NumYWords, indices.R_x, indices.R_y) * 2;
-            const WordOffset_S = TwiddleUV(i32NumXWords, i32NumYWords, indices.S_x, indices.S_y) * 2;
+            // Work out the offsets into the twiddle structs, multiply by eight as there are eight bytes per word.
+            const WordOffset_P = TwiddleUV(i32NumXWords, i32NumYWords, indices.P_x, indices.P_y) * 8;
+            const WordOffset_Q = TwiddleUV(i32NumXWords, i32NumYWords, indices.Q_x, indices.Q_y) * 8;
+            const WordOffset_R = TwiddleUV(i32NumXWords, i32NumYWords, indices.R_x, indices.R_y) * 8;
+            const WordOffset_S = TwiddleUV(i32NumXWords, i32NumYWords, indices.S_x, indices.S_y) * 8;
 
             // Access individual elements to fill out PVRTCWord
             const P: PVRTCWord = {
-                colorData: pCompressedData.getUint32(WordOffset_P * 4 + 4, true),
-                modulationData: pCompressedData.getUint32(WordOffset_P * 4, true)
+                colorData: pCompressedData.getUint32(WordOffset_P + 4, true),
+                modulationData: pCompressedData.getUint32(WordOffset_P, true)
             };
             const Q: PVRTCWord = {
-                colorData: pCompressedData.getUint32(WordOffset_Q * 4 + 4, true),
-                modulationData: pCompressedData.getUint32(WordOffset_Q * 4, true)
+                colorData: pCompressedData.getUint32(WordOffset_Q + 4, true),
+                modulationData: pCompressedData.getUint32(WordOffset_Q, true)
             };
             const R: PVRTCWord = {
-                colorData: pCompressedData.getUint32(WordOffset_R * 4 + 4, true),
-                modulationData: pCompressedData.getUint32(WordOffset_R * 4, true)
+                colorData: pCompressedData.getUint32(WordOffset_R + 4, true),
+                modulationData: pCompressedData.getUint32(WordOffset_R, true)
             };
             const S: PVRTCWord = {
-                colorData: pCompressedData.getUint32(WordOffset_S * 4 + 4, true),
-                modulationData: pCompressedData.getUint32(WordOffset_S * 4, true)
+                colorData: pCompressedData.getUint32(WordOffset_S + 4, true),
+                modulationData: pCompressedData.getUint32(WordOffset_S, true)
             };
 
             // assemble 4 words into struct to get decompressed pixels from

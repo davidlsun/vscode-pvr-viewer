@@ -3,11 +3,16 @@ import sharp from 'sharp';
 import * as pvr from './pvr';
 import * as pvrtc from './pvrtc';
 import * as etc from './etc';
+import { error } from 'console';
+import { exit } from 'process';
 
 async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
+    if (data.length < pvr.HEADER_SIZE) { throw error; }
+
     // read fixed size header block
     const header = new DataView(data.buffer, data.byteOffset, pvr.HEADER_SIZE);
     const version = header.getUint32(0, true);
+    if (version !== pvr.PVRTEX3_IDENT) { throw error; }
     const flags = header.getUint32(4, true); // 0 = no flags, 2 = pre-multiplied alpha
     const pixelFormat: pvr.PixelFormat = header.getUint32(8, true);
     const pixelFormatHigh = header.getUint32(12, true); // 0
@@ -21,8 +26,30 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
     const mipMapCount = header.getUint32(44, true); // 1 mip only
     const metaDataSize = header.getUint32(48, true); // 0 bytes
 
+    let flipX = false;
+    let flipY = true;
+    let flipZ = false;
+
     // read metadata, 0 or more key-value entries
-    const metadata = new DataView(data.buffer, data.byteOffset + pvr.HEADER_SIZE, metaDataSize);
+    let metadata = new DataView(data.buffer, data.byteOffset + pvr.HEADER_SIZE, metaDataSize);
+    while (metadata.byteLength > 12) {
+        const creator = metadata.getUint32(0, true);
+        const semantic: pvr.MetaData = metadata.getUint32(4, true);
+        const length = metadata.getUint32(8, true);
+        if (metadata.byteLength >= 12 + length) {
+            const bytes = new DataView(metadata.buffer, metadata.byteOffset + 12, length);
+            switch (semantic) {
+                case pvr.MetaData.TextureOrientation:
+                    flipX = (bytes.getUint8(pvr.Axis.X) === pvr.Orientation.Left);
+                    flipY = (bytes.getUint8(pvr.Axis.Y) === pvr.Orientation.Up);
+                    flipZ = (bytes.getUint8(pvr.Axis.Z) === pvr.Orientation.Out);
+                    break;
+            }
+            metadata = new DataView(metadata.buffer, metadata.byteOffset + 12 + length, metadata.byteLength - 12 - length);
+        } else {
+            break;
+        }
+    }
 
     // read bulk color data
     const encData = new DataView(data.buffer, data.byteOffset + pvr.HEADER_SIZE + metaDataSize, data.byteLength - pvr.HEADER_SIZE - metaDataSize);
@@ -121,7 +148,7 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
             break;
     }
 
-    const image = sharp(decData, { raw: { width: width, height: height, channels: 4 } }).flip();
+    const image = sharp(decData, { raw: { width: width, height: height, channels: 4 } }).flip(flipY);
     return await image.png().withMetadata().toBuffer();
 }
 

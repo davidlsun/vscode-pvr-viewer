@@ -6,13 +6,10 @@
 
 ******************************************************************************/
 
-type uint32 = number;
-type uint64 = bigint;
-
 // Texture related constants and enumerations.
 
 // V3 Header Identifiers.
-const PVRTEX3_IDENT = 0x03525650; // 'P''V''R'3
+export const PVRTEX3_IDENT = 0x03525650; // 'P''V''R'3
 
 // PVR Header file flags. Condition if true. If false, opposite is true unless specified.
 const PVRTEX3_FILE_COMPRESSED = (1 << 0); // Texture has been file compressed using PVRTexLib (currently unused)
