@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import sharp from 'sharp';
 import * as pvr from './pvr';
+import * as pvrtc from './pvrtc';
 import * as etc from './etc';
 
 async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
@@ -8,10 +9,10 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
     const header = new DataView(data.buffer, data.byteOffset, pvr.HEADER_SIZE);
     const version = header.getUint32(0, true);
     const flags = header.getUint32(4, true); // 0 = no flags, 2 = pre-multiplied alpha
-    const pixelFormat:pvr.PixelFormat = header.getUint32(8, true);
+    const pixelFormat: pvr.PixelFormat = header.getUint32(8, true);
     const pixelFormatHigh = header.getUint32(12, true); // 0
-    const colourSpace:pvr.ColourSpace = header.getUint32(16, true);
-    const channelType:pvr.VariableType = header.getUint32(20, true);
+    const colourSpace: pvr.ColourSpace = header.getUint32(16, true);
+    const channelType: pvr.VariableType = header.getUint32(20, true);
     const height = header.getUint32(24, true); // 512 pixels
     const width = header.getUint32(28, true); // 512 pixels
     const depth = header.getUint32(32, true); // 1 pixel
@@ -24,28 +25,85 @@ async function parsePVRFile(data: Uint8Array): Promise<Buffer> {
     const metadata = new DataView(data.buffer, data.byteOffset + pvr.HEADER_SIZE, metaDataSize);
 
     // read bulk color data
-    const blocks = new DataView(data.buffer, data.byteOffset + pvr.HEADER_SIZE + metaDataSize, data.byteLength - pvr.HEADER_SIZE - metaDataSize);
-    const buf = new Uint8Array(width * height * 4);
+    const encData = new DataView(data.buffer, data.byteOffset + pvr.HEADER_SIZE + metaDataSize, data.byteLength - pvr.HEADER_SIZE - metaDataSize);
+    const decData = new Uint8Array(width * height * 4);
 
-    if (pixelFormat === pvr.PixelFormat.ETC1 && channelType === pvr.VariableType.UnsignedByteNorm && colourSpace === pvr.ColourSpace.Linear) {
-        etc.decompress_ETC2_RGB(buf, blocks, width, height);
-    } else if (pixelFormat === pvr.PixelFormat.ETC2_RGB && channelType === pvr.VariableType.UnsignedByteNorm) {
-        etc.decompress_ETC2_RGB(buf, blocks, width, height); // linear and srgb
-    } else if (pixelFormat === pvr.PixelFormat.ETC2_RGBA && channelType === pvr.VariableType.UnsignedByteNorm) {
-        etc.decompress_ETC2_RGBA(buf, blocks, width, height); // linear and srgb
-    } else if (pixelFormat === pvr.PixelFormat.ETC2_RGB_A1 && channelType === pvr.VariableType.UnsignedByteNorm) {
-        etc.decompress_ETC2_RGB_A1(buf, blocks, width, height); // linear and srgb
-    } else if (pixelFormat === pvr.PixelFormat.EAC_R11 && channelType === pvr.VariableType.UnsignedShortNorm && colourSpace === pvr.ColourSpace.Linear) {
-        etc.decompress_EAC_R11(buf, blocks, width, height, false);
-    } else if (pixelFormat === pvr.PixelFormat.EAC_R11 && channelType === pvr.VariableType.SignedShortNorm && colourSpace === pvr.ColourSpace.Linear) {
-        etc.decompress_EAC_R11(buf, blocks, width, height, true);
-    } else if (pixelFormat === pvr.PixelFormat.EAC_RG11 && channelType === pvr.VariableType.UnsignedIntegerNorm && colourSpace === pvr.ColourSpace.Linear) {
-        etc.decompress_EAC_RG11(buf, blocks, width, height, false);
-    } else if (pixelFormat === pvr.PixelFormat.EAC_RG11 && channelType === pvr.VariableType.SignedIntegerNorm && colourSpace === pvr.ColourSpace.Linear) {
-        etc.decompress_EAC_RG11(buf, blocks, width, height, true);
+    // some formats need to be flipped
+    let flipY = false;
+
+    switch (pixelFormat) {
+        case pvr.PixelFormat.PVRTCI_2bpp_RGB:
+            break;
+        case pvr.PixelFormat.PVRTCI_2bpp_RGBA:
+            break;
+        case pvr.PixelFormat.PVRTCI_4bpp_RGB:
+            break;
+        case pvr.PixelFormat.PVRTCI_4bpp_RGBA:
+            pvrtc.PVRTDecompressPVRTC(decData, encData, width, height, false);
+            break;
+        case pvr.PixelFormat.PVRTCII_2bpp:
+            break;
+        case pvr.PixelFormat.PVRTCII_4bpp:
+            break;
+        case pvr.PixelFormat.ETC1:
+            if (channelType === pvr.VariableType.UnsignedByteNorm && colourSpace === pvr.ColourSpace.Linear) {
+                etc.decompress_ETC2_RGB(decData, encData, width, height);
+            }
+            flipY = true;
+            break;
+        case pvr.PixelFormat.ETC2_RGB:
+            if (channelType === pvr.VariableType.UnsignedByteNorm) {
+                etc.decompress_ETC2_RGB(decData, encData, width, height); // linear and srgb
+            }
+            flipY = true;
+            break;
+        case pvr.PixelFormat.ETC2_RGBA:
+            if (channelType === pvr.VariableType.UnsignedByteNorm) {
+                etc.decompress_ETC2_RGBA(decData, encData, width, height); // linear and srgb
+            }
+            flipY = true;
+            break;
+        case pvr.PixelFormat.ETC2_RGB_A1:
+            if (channelType === pvr.VariableType.UnsignedByteNorm) {
+                etc.decompress_ETC2_RGB_A1(decData, encData, width, height); // linear and srgb
+            }
+            flipY = true;
+            break;
+        case pvr.PixelFormat.EAC_R11:
+            if (channelType === pvr.VariableType.UnsignedShortNorm && colourSpace === pvr.ColourSpace.Linear) {
+                etc.decompress_EAC_R11(decData, encData, width, height, false);
+            }
+            flipY = true;
+            break;
+        case pvr.PixelFormat.EAC_R11:
+            if (channelType === pvr.VariableType.SignedShortNorm && colourSpace === pvr.ColourSpace.Linear) {
+                etc.decompress_EAC_R11(decData, encData, width, height, true);
+            }
+            flipY = true;
+            break;
+        case pvr.PixelFormat.EAC_RG11:
+            if (channelType === pvr.VariableType.UnsignedIntegerNorm && colourSpace === pvr.ColourSpace.Linear) {
+                etc.decompress_EAC_RG11(decData, encData, width, height, false);
+            }
+            flipY = true;
+            break;
+        case pvr.PixelFormat.EAC_RG11:
+            if (channelType === pvr.VariableType.SignedIntegerNorm && colourSpace === pvr.ColourSpace.Linear) {
+                etc.decompress_EAC_RG11(decData, encData, width, height, true);
+            }
+            flipY = true;
+            break;
+        case pvr.PixelFormat.PVRTCI_HDR_6bpp:
+            break;
+        case pvr.PixelFormat.PVRTCI_HDR_8bpp:
+            break;
+        case pvr.PixelFormat.PVRTCII_HDR_6bpp:
+            break;
+        case pvr.PixelFormat.PVRTCII_HDR_8bpp:
+            break;
     }
 
-    const image = sharp(buf, { raw: { width: width, height: height, channels: 4 } }).flip();
+    const image = sharp(decData, { raw: { width: width, height: height, channels: 4 } }).flip(flipY);
     return await image.png().withMetadata().toBuffer();
 }
 

@@ -517,7 +517,7 @@ function calculatePaintColors59T(dist: uint8, color_0: Uint8Array, color_1: Uint
 //|31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00|
 //|----------------------------------------index bits---------------------------------------------|
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB59T(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB59T(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, startx: int, starty: int): void
 {
     const dist: uint8 = GETBITSHI(block_part1, TABLE_BITS_59T, 34);
 
@@ -592,7 +592,7 @@ function calculatePaintColors58H(dist: uint8, color_0: Uint8Array, color_1: Uint
 
 // Decompress an H-mode block 
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB58H(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB58H(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, startx: int, starty: int): void
 {
     let dist: uint8 = (GETBITSHI(block_part1, 2, 33) << 1);
     const col0: uint = GETBITSHI(block_part1, 12, 57);
@@ -631,7 +631,7 @@ function decompressBlockTHUMB58H(block_part1: uint, block_part2: uint, img: Uint
 
 // Decompress the planar mode.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockPlanar57(compressed57_1: uint, compressed57_2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockPlanar57(compressed57_1: uint, compressed57_2: uint, img: Uint8Array, width: int, startx: int, starty: int): void
 {
     const colorO = new Uint8Array([
         GETBITSHI(compressed57_1, 6, 63),
@@ -672,7 +672,7 @@ function decompressBlockPlanar57(compressed57_1: uint, compressed57_2: uint, img
 
 // Decompress an ETC1 block (or ETC2 using individual or differential mode).
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, startx: int, starty: int): void
 {
     const diffbit: boolean = (GETBITSHI(block_part1, 1, 33) !== 0);
     const flipbit: boolean = (GETBITSHI(block_part1, 1, 32) !== 0);
@@ -918,7 +918,7 @@ function decompressBlockDiffFlip(block_part1: uint, block_part2: uint, img: Uint
 
 // Decompress an ETC2 RGB block
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockETC2(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockETC2(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, startx: int, starty: int): void
 {
     const diffbit: boolean = (GETBITSHI(block_part1, 1, 33) !== 0);
 
@@ -947,27 +947,27 @@ function decompressBlockETC2(block_part1: uint, block_part2: uint, img: Uint8Arr
 
         if (r < 0 || r > 31) {
             const [block59_part1, block59_part2] = unstuff59bits(block_part1, block_part2);
-            decompressBlockTHUMB59T(block59_part1, block59_part2, img, width, height, startx, starty);
+            decompressBlockTHUMB59T(block59_part1, block59_part2, img, width, startx, starty);
         } else if (g < 0 || g > 31) {
             const [block58_part1, block58_part2] = unstuff58bits(block_part1, block_part2);
-            decompressBlockTHUMB58H(block58_part1, block58_part2, img, width, height, startx, starty);
+            decompressBlockTHUMB58H(block58_part1, block58_part2, img, width, startx, starty);
         } else if (b < 0 || b > 31) {
             const [block57_part1, block57_part2] = unstuff57bits(block_part1, block_part2);
-            decompressBlockPlanar57(block57_part1, block57_part2, img, width, height, startx, starty);
+            decompressBlockPlanar57(block57_part1, block57_part2, img, width, startx, starty);
         } else {
-            decompressBlockDiffFlip(block_part1, block_part2, img, width, height, startx, starty);
+            decompressBlockDiffFlip(block_part1, block_part2, img, width, startx, starty);
         }
     }
     else
     {
         // We have diffbit = 0;
-        decompressBlockDiffFlip(block_part1, block_part2, img, width, height, startx, starty);
+        decompressBlockDiffFlip(block_part1, block_part2, img, width, startx, starty);
     }
 }
 
 // Decompress an ETC2 block with punchthrough alpha
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, startx: int, starty: int): void
 {
     //the diffbit now encodes whether or not the entire alpha channel is 255.
     const diffbit: boolean = (GETBITSHI(block_part1, 1, 33) !== 0);
@@ -1138,7 +1138,7 @@ function decompressBlockDifferentialWithAlpha(block_part1: uint, block_part2: ui
 
 // similar to regular decompression, but alpha channel is set to 0 if pixel index is 2, otherwise 255.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB59TAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB59TAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, startx: int, starty: int): void
 {
     const dist: uint8 = GETBITSHI(block_part1, TABLE_BITS_59T, 34);
 
@@ -1180,7 +1180,7 @@ function decompressBlockTHUMB59TAlpha(block_part1: uint, block_part2: uint, img:
 
 // Decompress an H-mode block with alpha
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockTHUMB58HAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockTHUMB58HAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, startx: int, starty: int): void
 {
     let dist: uint8 = (GETBITSHI(block_part1, 2, 33) << 1);
     const col0: uint = GETBITSHI(block_part1, 12, 57);
@@ -1227,7 +1227,7 @@ function decompressBlockTHUMB58HAlpha(block_part1: uint, block_part2: uint, img:
 
 // Decompression function for ETC2_RGBA1 format.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img: Uint8Array, width: int, startx: int, starty: int): void
 {
     const diffbit: boolean = (GETBITSHI(block_part1, 1, 33) !== 0);
 
@@ -1256,15 +1256,15 @@ function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img:
 
         if (r < 0 || r > 31) {
             const [block59_part1, block59_part2] = unstuff59bits(block_part1, block_part2);
-            decompressBlockTHUMB59T(block59_part1, block59_part2, img, width, height, startx, starty);
+            decompressBlockTHUMB59T(block59_part1, block59_part2, img, width, startx, starty);
         } else if (g < 0 || g > 31) {
             const [block58_part1, block58_part2] = unstuff58bits(block_part1, block_part2);
-            decompressBlockTHUMB58H(block58_part1, block58_part2, img, width, height, startx, starty);
+            decompressBlockTHUMB58H(block58_part1, block58_part2, img, width, startx, starty);
         } else if (b < 0 || b > 31) {
             const [block57_part1, block57_part2] = unstuff57bits(block_part1, block_part2);
-            decompressBlockPlanar57(block57_part1, block57_part2, img, width, height, startx, starty);
+            decompressBlockPlanar57(block57_part1, block57_part2, img, width, startx, starty);
         } else {
-            decompressBlockDifferentialWithAlpha(block_part1, block_part2, img, width, height, startx, starty);
+            decompressBlockDifferentialWithAlpha(block_part1, block_part2, img, width, startx, starty);
         }
 
         for (let x = startx; x < startx+4; x++) {
@@ -1298,13 +1298,13 @@ function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img:
 
         if (r < 0 || r > 31) {
             const [block59_part1, block59_part2] = unstuff59bits(block_part1, block_part2);
-            decompressBlockTHUMB59TAlpha(block59_part1, block59_part2, img, width, height, startx, starty);
+            decompressBlockTHUMB59TAlpha(block59_part1, block59_part2, img, width, startx, starty);
         } else if (g < 0 || g > 31) {
             const [block58_part1, block58_part2] = unstuff58bits(block_part1, block_part2);
-            decompressBlockTHUMB58HAlpha(block58_part1, block58_part2, img, width, height, startx, starty);
+            decompressBlockTHUMB58HAlpha(block58_part1, block58_part2, img, width, startx, starty);
         } else if (b < 0 || b > 31) {
             const [block57_part1, block57_part2] = unstuff57bits(block_part1, block_part2);
-            decompressBlockPlanar57(block57_part1, block57_part2, img, width, height, startx, starty);
+            decompressBlockPlanar57(block57_part1, block57_part2, img, width, startx, starty);
 
             for (let x = startx; x < startx+4; x++) {
                 for (let y = starty; y < starty+4; y++) {
@@ -1312,7 +1312,7 @@ function decompressBlockETC21BitAlpha(block_part1: uint, block_part2: uint, img:
                 }
             }
         } else {
-            decompressBlockDifferentialWithAlpha(block_part1, block_part2, img, width, height, startx, starty);
+            decompressBlockDifferentialWithAlpha(block_part1, block_part2, img, width, startx, starty);
         }
     }
 }
@@ -1337,7 +1337,7 @@ function getbit(input: uint8, frompos: int, topos: int): uint8
 // However, a hardware decoder can share gates between the two formats as explained
 // in the specification under GL_COMPRESSED_R11_EAC.
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockAlpha(data: DataView, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockAlpha(data: DataView, img: Uint8Array, width: int, startx: int, starty: int): void
 {
     let alpha = data.getUint8(0);
     let table = data.getUint8(1);
@@ -1456,7 +1456,7 @@ function get16bits11bits(base: int, table: int, mul: int, index: int): uint16
 
 // Decompresses a block using one of the GL_COMPRESSED_R11_EAC or GL_COMPRESSED_SIGNED_R11_EAC-formats
 // NO WARRANTY --- SEE STATEMENT IN TOP OF FILE (C) Ericsson AB 2005-2013. All Rights Reserved.
-function decompressBlockAlpha16bit(channel: int, formatSigned: boolean, data: DataView, img: Uint8Array, width: int, height: int, startx: int, starty: int): void
+function decompressBlockAlpha16bit(channel: int, formatSigned: boolean, data: DataView, img: Uint8Array, width: int, startx: int, starty: int): void
 {
     let alpha = data.getUint8(0);
     let table = data.getUint8(1);
@@ -1502,7 +1502,7 @@ export function decompress_ETC2_RGB(dec: Uint8Array, enc: DataView, width: int, 
         for (let x = 0; x < width; x += BLOCK_SIZE) {
             const block_part1 = enc.getUint32(block_offset + 0, false);
             const block_part2 = enc.getUint32(block_offset + 4, false);
-            decompressBlockETC2(block_part1, block_part2, dec, width, height, x, y);
+            decompressBlockETC2(block_part1, block_part2, dec, width, x, y);
             block_offset += 8;
         }
     }
@@ -1522,12 +1522,12 @@ export function decompress_ETC2_RGBA(dec: Uint8Array, enc: DataView, width: int,
     for (let y = 0; y < height; y += BLOCK_SIZE) {
         for (let x = 0; x < width; x += BLOCK_SIZE) {
             const alpha_block = new DataView(enc.buffer, enc.byteOffset + block_offset, 8);
-            decompressBlockAlpha(alpha_block, dec, width, height, x, y);
+            decompressBlockAlpha(alpha_block, dec, width, x, y);
             block_offset += 8;
 
             const block_part1 = enc.getUint32(block_offset + 0, false);
             const block_part2 = enc.getUint32(block_offset + 4, false);
-            decompressBlockETC2(block_part1, block_part2, dec, width, height, x, y);
+            decompressBlockETC2(block_part1, block_part2, dec, width, x, y);
             block_offset += 8;
         }
     }
@@ -1542,7 +1542,7 @@ export function decompress_ETC2_RGB_A1(dec: Uint8Array, enc: DataView, width: in
         for (let x = 0; x < width; x += BLOCK_SIZE) {
             const block_part1 = enc.getUint32(block_offset + 0, false);
             const block_part2 = enc.getUint32(block_offset + 4, false);
-            decompressBlockETC21BitAlpha(block_part1, block_part2, dec, width, height, x, y);
+            decompressBlockETC21BitAlpha(block_part1, block_part2, dec, width, x, y);
             block_offset += 8;
         }
     }
@@ -1556,7 +1556,7 @@ export function decompress_EAC_R11(dec: Uint8Array, enc: DataView, width: int, h
     for (let y = 0; y < height; y += BLOCK_SIZE) {
         for (let x = 0; x < width; x += BLOCK_SIZE) {
             const alpha_block = new DataView(enc.buffer, enc.byteOffset + block_offset, 8);
-            decompressBlockAlpha16bit(R, signed, alpha_block, dec, width, height, x, y);
+            decompressBlockAlpha16bit(R, signed, alpha_block, dec, width, x, y);
             block_offset += 8;
         }
     }
@@ -1576,11 +1576,11 @@ export function decompress_EAC_RG11(dec: Uint8Array, enc: DataView, width: int, 
     for (let y = 0; y < height; y += BLOCK_SIZE) {
         for (let x = 0; x < width; x += BLOCK_SIZE) {
             const alpha_block = new DataView(enc.buffer, enc.byteOffset + block_offset, 8);
-            decompressBlockAlpha16bit(R, signed, alpha_block, dec, width, height, x, y);
+            decompressBlockAlpha16bit(R, signed, alpha_block, dec, width, x, y);
             block_offset += 8;
 
             const alpha_block_2 = new DataView(enc.buffer, enc.byteOffset + block_offset, 8);
-            decompressBlockAlpha16bit(G, signed, alpha_block_2, dec, width, height, x, y);
+            decompressBlockAlpha16bit(G, signed, alpha_block_2, dec, width, x, y);
             block_offset += 8;
         }
     }
