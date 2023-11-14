@@ -193,9 +193,9 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
         this._data = data;
     }
 
-    public async toDataUrl(): Promise<string> {
+    public async toBase64Png(): Promise<string> {
         const png = await parsePVRFile(this._data);
-        return "data:image/png;base64," + png.toString('base64');
+        return png.toString('base64');
     }
 }
 
@@ -232,16 +232,15 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
         };
 
         // set content in webview
-        const dataUrl = await document.toDataUrl();
-        panel.webview.html = this._generateHtmlForWebview(panel.webview, dataUrl);
+        const pngData = await document.toBase64Png();
+        panel.webview.html = this._generateHtmlForWebview(panel.webview, pngData);
     }
 
-    private _generateHtmlForWebview(webview: vscode.Webview, dataUrl: string): string {
+    private _generateHtmlForWebview(webview: vscode.Webview, pngData: string): string {
         // convert local path of project files to a uri we can use in the webview
         const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
         const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
         const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
-        const documentUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'a.png'));
 
         return `<!DOCTYPE html>
 <html lang="en">
@@ -254,7 +253,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <link href="${styleMainUri}" rel="stylesheet>
 </head>
 <body>
-    <div id="canvas-container"><img id="image-preview" src="${dataUrl}"></div>
+    <div id="canvas-container"><img id="image-preview" src="data:image/png;base64,${pngData}"></div>
 </body>
 </html>`;
     }
