@@ -89,35 +89,10 @@ function convert5554ToPixel128S(c: Uint8Array): Int32Array
     ]);
 }
 
-function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, do2bitMode: boolean, hardFlag: boolean): Pixel128S[]
+function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, do2bitMode: boolean): Pixel128S[]
 {
     const wordWidth = (do2bitMode ? 8 : 4);
     const wordHeight = 4;
-
-    if (hardFlag) {
-        const pPixel = new Array<Pixel128S>(wordWidth * wordHeight);
-        for (let y = 0; y < wordHeight; y++) {
-            for (let x = 0; x < wordWidth; x++) {
-                let result: Int32Array;
-                if (y < wordHeight / 2) {
-                    if (x < wordWidth / 2) {
-                        result = convert5554ToPixel128S(P);
-                    } else {
-                        result = convert5554ToPixel128S(Q);
-                    }
-                } else {
-                    if (x < wordWidth / 2) {
-                        result = convert5554ToPixel128S(R);
-                    } else {
-                        result = convert5554ToPixel128S(S);
-                    }
-                }
-                result[3] = 0;
-                pPixel[y * wordWidth + x] = result;
-            }
-        }
-        return pPixel;
-    }
 
     // Convert to int 32.
     let hP = new Int32Array([P[0], P[1], P[2], P[3]]);
@@ -145,7 +120,7 @@ function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, do2bi
     // Loop through pixels to achieve results.
     for (let x = 0; x < wordWidth; x++)
     {
-        let result = new Int32Array([4 * hP[0], 4 * hP[1], 4 * hP[2], 4 * hP[3]]);
+        let result = new Int32Array([hP[0] * wordHeight, hP[1] * wordHeight, hP[2] * wordHeight, hP[3] * wordHeight]);
         let dY = new Int32Array([hR[0] - hP[0], hR[1] - hP[1], hR[2] - hP[2], hR[3] - hP[3]]);
 
         for (let y = 0; y < wordHeight; y++)
@@ -186,10 +161,9 @@ function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, do2bi
     return pPixel;
 }
 
-function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulationValues: Int32Array[], modulationModes: Int32Array[], do2bitMode: boolean): void
+function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulationValues: Int32Array[], modulationModes: Int32Array[], do2bitMode: boolean, hardFlag: boolean): void
 {
     const modeFlag = word.colorData & (1 << 0);
-    const hardFlag = PVRTC2_Mode && ((word.colorData & (1 << 15)) !== 0);
 
     let modulationBits = word.modulationData;
 
@@ -266,11 +240,23 @@ function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulati
         // run through all the pixels in the word.
         if (modeFlag)
         {
-            if (!hardFlag)
+            if (hardFlag)
+            {
+                // local palette mode
+                for (let y = 0; y < 4; y++) {
+                    for (let x = 0; x < 4; x++) {
+                        modulationModes[x + offsetX][y + offsetY] = (modeFlag ? 1 : 0);
+                        modulationValues[x + offsetX][y + offsetY] = modulationBits & 3;
+                        modulationBits >>= 2;
+                    }
+                }
+            }
+            else
             {
                 // punch-through alpha
                 for (let y = 0; y < 4; y++) {
                     for (let x = 0; x < 4; x++) {
+                        modulationModes[x + offsetX][y + offsetY] = (modeFlag ? 1 : 0);
                         let weight = 0;
                         switch (modulationBits & 3) {
                             case 0: weight = 0; break;
@@ -283,22 +269,13 @@ function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulati
                     }
                 }
             }
-            else
-            {
-                // local palette
-                for (let y = 0; y < 4; y++) {
-                    for (let x = 0; x < 4; x++) {
-                        modulationValues[x + offsetX][y + offsetY] = 0;
-                        modulationBits >>= 2;
-                    }
-                }
-            }
         }
         else
         {
             // weights for bilinear and non-interpolated modes are the same
             for (let y = 0; y < 4; y++) {
                 for (let x = 0; x < 4; x++) {
+                    modulationModes[x + offsetX][y + offsetY] = (modeFlag ? 1 : 0);
                     let weight = 0;
                     switch (modulationBits & 3) {
                         case 0: weight = 0; break;
@@ -355,6 +332,14 @@ function getModulationValues(modulationValues: Int32Array[], modulationModes: In
 
 const convertToPixel32 = (c: Int32Array): Uint8Array => new Uint8Array([SATURATE(c[0]), SATURATE(c[1]), SATURATE(c[2]), SATURATE(c[3])]);
 
+// color lookup [Pa, Pb, Qa, Qb, Ra, Rb, Sa, Sb, (5Pa+3Pb)/8, (3Pa+5Pb)/8]
+const paletteLookup = [
+    [[0, 8, 9, 1], [0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2, 3]],
+    [[0, 1, 4, 5], [0, 1, 2, 5], [0, 1, 2, 3], [6, 1, 2, 3]],
+    [[0, 1, 4, 5], [0, 1, 4, 5], [0, 7, 4, 3], [6, 7, 2, 3]],
+    [[0, 1, 4, 5], [0, 6, 4, 5], [6, 7, 4, 5], [6, 7, 4, 3]]
+];
+
 function pvrtcGetDecompressedPixels(P: PVRTCWord, Q: PVRTCWord, R: PVRTCWord, S: PVRTCWord, do2bitMode: boolean): Pixel32[]
 {
     const wordWidth = (do2bitMode ? 8 : 4);
@@ -368,37 +353,109 @@ function pvrtcGetDecompressedPixels(P: PVRTCWord, Q: PVRTCWord, R: PVRTCWord, S:
         modulationModes[i] = new Int32Array(wordHeight * 2);
     }
 
+    // hard flag for block affects region outside own block
+    const hardFlag = PVRTC2_Mode && ((P.colorData & (1 << 15)) !== 0);
+
     // Get the modulations from each word.
-    unpackModulations(P, 0, 0, modulationValues, modulationModes, do2bitMode);
-    unpackModulations(Q, wordWidth, 0, modulationValues, modulationModes, do2bitMode);
-    unpackModulations(R, 0, wordHeight, modulationValues, modulationModes, do2bitMode);
-    unpackModulations(S, wordWidth, wordHeight, modulationValues, modulationModes, do2bitMode);
+    unpackModulations(P, 0, 0, modulationValues, modulationModes, do2bitMode, hardFlag);
+    unpackModulations(Q, wordWidth, 0, modulationValues, modulationModes, do2bitMode, hardFlag);
+    unpackModulations(R, 0, wordHeight, modulationValues, modulationModes, do2bitMode, hardFlag);
+    unpackModulations(S, wordWidth, wordHeight, modulationValues, modulationModes, do2bitMode, hardFlag);
 
     // Bilinear upscale image data from 2x2 -> 4x4
-    const hardFlag = PVRTC2_Mode && ((P.colorData & (1 << 15)) !== 0);
-    let upscaledColorA = interpolateColors(getColorA(P.colorData), getColorA(Q.colorData), getColorA(R.colorData), getColorA(S.colorData), do2bitMode, hardFlag);
-    let upscaledColorB = interpolateColors(getColorB(P.colorData), getColorB(Q.colorData), getColorB(R.colorData), getColorB(S.colorData), do2bitMode, hardFlag);
+    const Pa = getColorA(P.colorData);
+    const Pb = getColorB(P.colorData);
+    const Qa = getColorA(Q.colorData);
+    const Qb = getColorB(Q.colorData);
+    const Ra = getColorA(R.colorData);
+    const Rb = getColorB(R.colorData);
+    const Sa = getColorA(S.colorData);
+    const Sb = getColorB(S.colorData);
+    const upscaledColorA = interpolateColors(Pa, Qa, Ra, Sa, do2bitMode);
+    const upscaledColorB = interpolateColors(Pb, Qb, Rb, Sb, do2bitMode);
 
     const pColorData = Array<Pixel32>(wordWidth * wordHeight);
 
     for (let y = 0; y < wordHeight; y++) {
         for (let x = 0; x < wordWidth; x++) {
-            let weight = getModulationValues(modulationValues, modulationModes, x + wordWidth / 2, y + wordHeight / 2, do2bitMode);
-            let punchthroughAlpha = false;
-            if (weight > 10) {
-                punchthroughAlpha = true;
-                weight -= 10;
+            let result: Int32Array;
+
+            if (hardFlag) {
+                const mode = modulationModes[x + wordWidth / 2][y + wordHeight / 2];
+                if (mode === 0) {
+                    // non-interpolated
+                    const weight = getModulationValues(modulationValues, modulationModes, x + wordWidth / 2, y + wordHeight / 2, do2bitMode);
+                    const nearestWord: PVRTCWord = (y < wordHeight / 2) ?
+                        ((x < wordWidth / 2) ? P : Q) :
+                        ((x < wordWidth / 2) ? R : S);
+                    const colorA = convert5554ToPixel128S(getColorA(nearestWord.colorData));
+                    const colorB = convert5554ToPixel128S(getColorB(nearestWord.colorData));
+    
+                    result = new Int32Array([
+                        (colorA[0] * (8 - weight) + colorB[0] * weight) / 8,
+                        (colorA[1] * (8 - weight) + colorB[1] * weight) / 8,
+                        (colorA[2] * (8 - weight) + colorB[2] * weight) / 8,
+                        (colorA[3] * (8 - weight) + colorB[3] * weight) / 8
+                    ]);
+                } else {
+                    // local palette mode
+                    const modBits = getModulationValues(modulationValues, modulationModes, x + wordWidth / 2, y + wordHeight / 2, do2bitMode);
+                    switch (paletteLookup[y][x][modBits]) {
+                        case 0: result = convert5554ToPixel128S(Pa); break;
+                        case 1: result = convert5554ToPixel128S(Pb); break;
+                        case 2: result = convert5554ToPixel128S(Qa); break;
+                        case 3: result = convert5554ToPixel128S(Qb); break;
+                        case 4: result = convert5554ToPixel128S(Ra); break;
+                        case 5: result = convert5554ToPixel128S(Rb); break;
+                        case 6: result = convert5554ToPixel128S(Sa); break;
+                        case 7: result = convert5554ToPixel128S(Sb); break;
+                        case 8:
+                            {
+                                const colorA = convert5554ToPixel128S(Pa);
+                                const colorB = convert5554ToPixel128S(Pb);
+                                result = new Int32Array([
+                                    (colorA[0] * 5 + colorB[0] * 3) / 8,
+                                    (colorA[1] * 5 + colorB[1] * 3) / 8,
+                                    (colorA[2] * 5 + colorB[2] * 3) / 8,
+                                    (colorA[3] * 5 + colorB[3] * 3) / 8
+                                ]);
+                            }
+                            break;
+                        case 9:
+                            {
+                                const colorA = convert5554ToPixel128S(Pa);
+                                const colorB = convert5554ToPixel128S(Pb);
+                                result = new Int32Array([
+                                    (colorA[0] * 3 + colorB[0] * 5) / 8,
+                                    (colorA[1] * 3 + colorB[1] * 5) / 8,
+                                    (colorA[2] * 3 + colorB[2] * 5) / 8,
+                                    (colorA[3] * 3 + colorB[3] * 5) / 8
+                                ]);
+                            }
+                            break;
+                        default:
+                            result = new Int32Array([0, 0, 0, 0]);
+                            break;
+                    }
+                }
+            } else {
+                let weight = getModulationValues(modulationValues, modulationModes, x + wordWidth / 2, y + wordHeight / 2, do2bitMode);
+                let punchthroughAlpha = false;
+                if (weight > 10) {
+                    punchthroughAlpha = true;
+                    weight -= 10;
+                }
+
+                const colorA = upscaledColorA[y * wordWidth + x];
+                const colorB = upscaledColorB[y * wordWidth + x];
+
+                result = new Int32Array([
+                    PVRTC2_Mode && punchthroughAlpha ? 0 : (colorA[0] * (8 - weight) + colorB[0] * weight) / 8,
+                    PVRTC2_Mode && punchthroughAlpha ? 0 : (colorA[1] * (8 - weight) + colorB[1] * weight) / 8,
+                    PVRTC2_Mode && punchthroughAlpha ? 0 : (colorA[2] * (8 - weight) + colorB[2] * weight) / 8,
+                    punchthroughAlpha ? 0 : (colorA[3] * (8 - weight) + colorB[3] * weight) / 8
+                ]);
             }
-
-            let colorA = upscaledColorA[y * wordWidth + x];
-            let colorB = upscaledColorB[y * wordWidth + x];
-
-            let result = new Int32Array([
-                PVRTC2_Mode && punchthroughAlpha ? 0 : (colorA[0] * (8 - weight) + colorB[0] * weight) / 8,
-                PVRTC2_Mode && punchthroughAlpha ? 0 : (colorA[1] * (8 - weight) + colorB[1] * weight) / 8,
-                PVRTC2_Mode && punchthroughAlpha ? 0 : (colorA[2] * (8 - weight) + colorB[2] * weight) / 8,
-                punchthroughAlpha ? 0 : (colorA[3] * (8 - weight) + colorB[3] * weight) / 8
-            ]);
 
             // Convert the 32bit precision Result to 8 bit per channel color.
             pColorData[y * wordWidth + x] = convertToPixel32(result);
