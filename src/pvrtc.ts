@@ -374,17 +374,17 @@ function pvrtcGetDecompressedPixels(P: PVRTCWord, Q: PVRTCWord, R: PVRTCWord, S:
             // Convert the 32bit precision Result to 8 bit per channel color.
             if (do2bitMode) {
                 pColorData[y * wordWidth + x] = new Uint8Array([
-                    result.R & 0xff,
-                    result.G & 0xff,
-                    result.B & 0xff,
-                    result.A & 0xff
+                    result.R,
+                    result.G,
+                    result.B,
+                    result.A
                 ]);
             } else { // 4bpp
                 pColorData[y + x * wordHeight] = new Uint8Array([
-                    result.R & 0xff,
-                    result.G & 0xff,
-                    result.B & 0xff,
-                    result.A & 0xff
+                    result.R,
+                    result.G,
+                    result.B,
+                    result.A
                 ]);
             }
         }
@@ -502,20 +502,20 @@ function pvrtcDecompress(pDecompressedData: Uint8Array, pCompressedData: DataVie
 
             // Access individual elements to fill out PVRTCWord
             const P: PVRTCWord = {
-                colorData: pCompressedData.getUint32(WordOffset_P * 4 + 4),
-                modulationData: pCompressedData.getUint32(WordOffset_P * 4)
+                colorData: pCompressedData.getUint32(WordOffset_P * 4 + 4, true),
+                modulationData: pCompressedData.getUint32(WordOffset_P * 4, true)
             };
             const Q: PVRTCWord = {
-                colorData: pCompressedData.getUint32(WordOffset_Q * 4 + 4),
-                modulationData: pCompressedData.getUint32(WordOffset_Q * 4)
+                colorData: pCompressedData.getUint32(WordOffset_Q * 4 + 4, true),
+                modulationData: pCompressedData.getUint32(WordOffset_Q * 4, true)
             };
             const R: PVRTCWord = {
-                colorData: pCompressedData.getUint32(WordOffset_R * 4 + 4),
-                modulationData: pCompressedData.getUint32(WordOffset_R * 4)
+                colorData: pCompressedData.getUint32(WordOffset_R * 4 + 4, true),
+                modulationData: pCompressedData.getUint32(WordOffset_R * 4, true)
             };
             const S: PVRTCWord = {
-                colorData: pCompressedData.getUint32(WordOffset_S * 4 + 4),
-                modulationData: pCompressedData.getUint32(WordOffset_S * 4)
+                colorData: pCompressedData.getUint32(WordOffset_S * 4 + 4, true),
+                modulationData: pCompressedData.getUint32(WordOffset_S * 4, true)
             };
 
             // assemble 4 words into struct to get decompressed pixels from
