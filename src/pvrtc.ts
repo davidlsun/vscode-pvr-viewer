@@ -6,31 +6,31 @@
 */
 //!\cond NO_DOXYGEN
 
-type uint8_t = number;
+type uint8 = number;
 type int = number;
-type int32_t = number;
-type uint32_t = number;
+type int32 = number;
+type uint32 = number;
 
 type Pixel32 =
 {
-	red: uint8_t,
-	green: uint8_t,
-	blue: uint8_t,
-	alpha: uint8_t
+	red: uint8,
+	green: uint8,
+	blue: uint8,
+	alpha: uint8
 };
 
 type Pixel128S =
 {
-	red: int32_t,
-	green: int32_t,
-	blue: int32_t,
-	alpha: int32_t
+	red: int32,
+	green: int32,
+	blue: int32,
+	alpha: int32
 };
 
 type PVRTCWord =
 {
-	modulationData: uint32_t,
-	colorData: uint32_t
+	modulationData: uint32,
+	colorData: uint32
 };
 
 type PVRTCWordIndices =
@@ -45,7 +45,7 @@ type PVRTCWordIndices =
 	S_1: int
 };
 
-function getColorA(colorData: uint32_t): Pixel32
+function getColorA(colorData: uint32): Pixel32
 {
 	// Opaque Color Mode - RGB 554
 	if ((colorData & 0x8000) !== 0)
@@ -54,7 +54,7 @@ function getColorA(colorData: uint32_t): Pixel32
 			red: ((colorData & 0x7c00) >> 10), // 5->5 bits
 			green: ((colorData & 0x3e0) >> 5), // 5->5 bits
 			blue: (colorData & 0x1e) | ((colorData & 0x1e) >> 4), // 4->5 bits
-			alpha: (0xf) // 0->4 bits
+			alpha: 0xf // 0->4 bits
 		};
 		return color;
 	}
@@ -71,7 +71,7 @@ function getColorA(colorData: uint32_t): Pixel32
 	}
 }
 
-function getColorB(colorData: uint32_t): Pixel32
+function getColorB(colorData: uint32): Pixel32
 {
 	// Opaque Color Mode - RGB 555
 	if (colorData & 0x80000000)
@@ -125,17 +125,19 @@ function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, pPixe
 	if (bpp === 2)
 	{
 		// Loop through pixels to achieve results.
-		for (let x: uint32_t = 0; x < wordWidth; x++)
+		for (let x = 0; x < wordWidth; x++)
 		{
 			let result: Pixel128S = { red: 4 * hP.red, green: 4 * hP.green, blue: 4 * hP.blue, alpha: 4 * hP.alpha };
 			let dY: Pixel128S = { red: hR.red - hP.red, green: hR.green - hP.green, blue: hR.blue - hP.blue, alpha: hR.alpha - hP.alpha };
 
-			for (let y: uint32_t = 0; y < wordHeight; y++)
+			for (let y = 0; y < wordHeight; y++)
 			{
-				pPixel[y * wordWidth + x].red = (result.red >> 7) + (result.red >> 2);
-				pPixel[y * wordWidth + x].green = (result.green >> 7) + (result.green >> 2);
-				pPixel[y * wordWidth + x].blue = (result.blue >> 7) + (result.blue >> 2);
-				pPixel[y * wordWidth + x].alpha = (result.alpha >> 5) + (result.alpha >> 1);
+				pPixel[y * wordWidth + x] = {
+					red: (result.red >> 7) + (result.red >> 2),
+					green: (result.green >> 7) + (result.green >> 2),
+					blue: (result.blue >> 7) + (result.blue >> 2),
+					alpha: (result.alpha >> 5) + (result.alpha >> 1)
+				};
 
 				result.red += dY.red;
 				result.green += dY.green;
@@ -164,10 +166,12 @@ function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, pPixe
 
 			for (let x = 0; x < wordWidth; x++)
 			{
-				pPixel[y * wordWidth + x].red = (result.red >> 6) + (result.red >> 1);
-				pPixel[y * wordWidth + x].green = (result.green >> 6) + (result.green >> 1);
-				pPixel[y * wordWidth + x].blue = (result.blue >> 6) + (result.blue >> 1);
-				pPixel[y * wordWidth + x].alpha = (result.alpha >> 4) + (result.alpha >> 0);
+				pPixel[y * wordWidth + x] = {
+					red: (result.red >> 6) + (result.red >> 1),
+					green: (result.green >> 6) + (result.green >> 1),
+					blue: (result.blue >> 6) + (result.blue >> 1),
+					alpha: (result.alpha >> 4) + (result.alpha >> 0)
+				};
 
 				result.red += dY.red;
 				result.green += dY.green;
@@ -188,10 +192,10 @@ function interpolateColors(P: Pixel32, Q: Pixel32, R: Pixel32, S: Pixel32, pPixe
 	}
 }
 
-function unpackModulations(word: PVRTCWord, offsetX: int32_t, offsetY: int32_t, modulationValues: int32_t[/*16*/][/*8*/], modulationModes: int32_t[/*16*/][/*8*/], bpp: int): void
+function unpackModulations(word: PVRTCWord, offsetX: int, offsetY: int, modulationValues: int32[/*16*/][/*8*/], modulationModes: int32[/*16*/][/*8*/], bpp: int): void
 {
-	let WordModMode: uint32_t = word.colorData & 0x1;
-	let ModulationBits: uint32_t = word.modulationData;
+	let WordModMode: uint32 = word.colorData & 0x1;
+	let ModulationBits: uint32 = word.modulationData;
 
 	// Unpack differently depending on 2bpp or 4bpp modes.
 	if (bpp === 2)
@@ -224,18 +228,18 @@ function unpackModulations(word: PVRTCWord, offsetX: int32_t, offsetY: int32_t, 
 					// clear it to produce 0.0 code
 					ModulationBits &= ~(0x1 << 20);
 				}
-			} // end if H-Only or V-Only interpolation mode was chosen
+			}
 
 			if (ModulationBits & 0x2) {
-				ModulationBits |= 0x1; /*set it*/
+				ModulationBits |= 0x1; // set it
 			} else {
-				ModulationBits &= ~0x1; /*clear it*/
+				ModulationBits &= ~0x1; // clear it
 			}
 
 			// run through all the pixels in the block. Note we can now treat all the
 			// "stored" values as if they have 2bits (even when they didn't!)
-			for (let y: uint8_t = 0; y < 4; y++) {
-				for (let x: uint8_t = 0; x < 8; x++) {
+			for (let y = 0; y < 4; y++) {
+				for (let x = 0; x < 8; x++) {
 					modulationModes[x + offsetX][y + offsetY] = WordModMode;
 
 					// if this is a stored value...
@@ -244,26 +248,19 @@ function unpackModulations(word: PVRTCWord, offsetX: int32_t, offsetY: int32_t, 
 						ModulationBits >>= 2;
 					}
 				}
-			} // end for y
+			}
 		}
 		// else if direct encoded 2bit mode - i.e. 1 mode bit per pixel
 		else
 		{
-			for (let y: uint8_t = 0; y < 4; y++) {
-				for (let x: uint8_t = 0; x < 8; x++) {
+			for (let y = 0; y < 4; y++) {
+				for (let x = 0; x < 8; x++) {
 					modulationModes[x + offsetX][y + offsetY] = WordModMode;
-
-					/*
 					// double the bits so 0=> 00, and 1=>11
-					*/
-					if (ModulationBits & 1) {
-						modulationValues[x + offsetX][y + offsetY] = 0x3;
-					} else {
-						modulationValues[x + offsetX][y + offsetY] = 0x0;
-					}
+					modulationValues[x + offsetX][y + offsetY] = (ModulationBits & 1 ? 0x3 : 0x0);
 					ModulationBits >>= 1;
 				}
-			} // end for y
+			}
 		}
 	}
 	else
@@ -272,8 +269,8 @@ function unpackModulations(word: PVRTCWord, offsetX: int32_t, offsetY: int32_t, 
 		// run through all the pixels in the word.
 		if (WordModMode)
 		{
-			for (let y: uint8_t = 0; y < 4; y++) {
-				for (let x: uint8_t = 0; x < 4; x++) {
+			for (let y = 0; y < 4; y++) {
+				for (let x = 0; x < 4; x++) {
 					modulationValues[y + offsetY][x + offsetX] = ModulationBits & 3;
 					// if (modulationValues==0) {}. We don't need to check 0, 0 = 0/8.
 					if (modulationValues[y + offsetY][x + offsetX] === 1) {
@@ -284,26 +281,26 @@ function unpackModulations(word: PVRTCWord, offsetX: int32_t, offsetY: int32_t, 
 						modulationValues[y + offsetY][x + offsetX] = 8;
 					}
 					ModulationBits >>= 2;
-				} // end for x
-			} // end for y
+				}
+			}
 		}
 		else
 		{
-			for (let y: uint8_t = 0; y < 4; y++) {
-				for (let x: uint8_t = 0; x < 4; x++) {
+			for (let y = 0; y < 4; y++) {
+				for (let x = 0; x < 4; x++) {
 					modulationValues[y + offsetY][x + offsetX] = ModulationBits & 3;
 					modulationValues[y + offsetY][x + offsetX] *= 3;
 					if (modulationValues[y + offsetY][x + offsetX] > 3) {
 						modulationValues[y + offsetY][x + offsetX] -= 1;
 					}
 					ModulationBits >>= 2;
-				} // end for x
-			} // end for y
+				}
+			}
 		}
 	}
 }
 
-function getModulationValues(modulationValues: int32_t[/*16*/][/*8*/], modulationModes: int32_t[/*16*/][/*8*/], xPos: uint32_t, yPos: uint32_t, bpp: int): int32_t
+function getModulationValues(modulationValues: int32[/*16*/][/*8*/], modulationModes: int32[/*16*/][/*8*/], xPos: int, yPos: int, bpp: int): int32
 {
 	if (bpp === 2)
 	{
@@ -322,13 +319,21 @@ function getModulationValues(modulationValues: int32_t[/*16*/][/*8*/], modulatio
 			// else average from the neighbours
 			// if H&V interpolation...
 			} else if (modulationModes[xPos][yPos] === 1) {
-				return (RepVals0[modulationValues[xPos][yPos - 1]] + RepVals0[modulationValues[xPos][yPos + 1]] + RepVals0[modulationValues[xPos - 1][yPos]] + RepVals0[modulationValues[xPos + 1][yPos]] + 2) / 4;
+				return (
+					RepVals0[modulationValues[xPos][yPos - 1]] +
+					RepVals0[modulationValues[xPos][yPos + 1]] +
+					RepVals0[modulationValues[xPos - 1][yPos]] +
+					RepVals0[modulationValues[xPos + 1][yPos]] + 2) / 4;
 			// else if H-Only
 			} else if (modulationModes[xPos][yPos] === 2) {
-				return (RepVals0[modulationValues[xPos - 1][yPos]] + RepVals0[modulationValues[xPos + 1][yPos]] + 1) / 2;
+				return (
+					RepVals0[modulationValues[xPos - 1][yPos]] +
+					RepVals0[modulationValues[xPos + 1][yPos]] + 1) / 2;
 			// else it's V-Only
 			} else {
-				return (RepVals0[modulationValues[xPos][yPos - 1]] + RepVals0[modulationValues[xPos][yPos + 1]] + 1) / 2;
+				return (
+					RepVals0[modulationValues[xPos][yPos - 1]] +
+					RepVals0[modulationValues[xPos][yPos + 1]] + 1) / 2;
 			}
 		}
 	}
@@ -343,12 +348,12 @@ function getModulationValues(modulationValues: int32_t[/*16*/][/*8*/], modulatio
 function pvrtcGetDecompressedPixels(P: PVRTCWord, Q: PVRTCWord, R: PVRTCWord, S: PVRTCWord, pColorData: Pixel32[], bpp: int): void
 {
 	// 4bpp only needs 8*8 values, but 2bpp needs 16*8, so rather than wasting processor time we just statically allocate 16*8.
-	let modulationValues = new Array<Array<int32_t>>(16);
-	let modulationModes = new Array<Array<int32_t>>(16);
+	let modulationValues = new Array<Array<int32>>(16);
+	let modulationModes = new Array<Array<int32>>(16);
 	for (let i = 0; i < 8; i++) {
-		modulationValues[i] = new Array<int32_t>(8);
-		modulationModes[i] = new Array<int32_t>(8);
-	};
+		modulationValues[i] = new Array<int32>(8);
+		modulationModes[i] = new Array<int32>(8);
+	}
 	// Only 2bpp needs this.
 	// 4bpp only needs 16 values, but 2bpp needs 32, so rather than wasting processor time we just statically allocate 32.
 	let upscaledColorA = new Array<Pixel128S>(32);
@@ -367,9 +372,9 @@ function pvrtcGetDecompressedPixels(P: PVRTCWord, Q: PVRTCWord, R: PVRTCWord, S:
 	interpolateColors(getColorA(P.colorData), getColorA(Q.colorData), getColorA(R.colorData), getColorA(S.colorData), upscaledColorA, bpp);
 	interpolateColors(getColorB(P.colorData), getColorB(Q.colorData), getColorB(R.colorData), getColorB(S.colorData), upscaledColorB, bpp);
 
-	for (let y: uint32_t = 0; y < wordHeight; y++) {
-		for (let x: uint32_t = 0; x < wordWidth; x++) {
-			let mod: int32_t = getModulationValues(modulationValues, modulationModes, x + wordWidth / 2, y + wordHeight / 2, bpp);
+	for (let y = 0; y < wordHeight; y++) {
+		for (let x = 0; x < wordWidth; x++) {
+			let mod = getModulationValues(modulationValues, modulationModes, x + wordWidth / 2, y + wordHeight / 2, bpp);
 			let punchthroughAlpha: boolean = false;
 			if (mod > 10) {
 				punchthroughAlpha = true;
@@ -403,28 +408,19 @@ function pvrtcGetDecompressedPixels(P: PVRTCWord, Q: PVRTCWord, R: PVRTCWord, S:
 	}
 }
 
-const wrapWordIndex = (numWords: uint32_t, word: int): uint32_t => ((word + numWords) % numWords);
-const assert = (condition: boolean): void => { };
+const wrapWordIndex = (numWords: int, word: int): int => ((word + numWords) % numWords);
+const assert = (condition: boolean): void => { condition; };
+const isPowerOf2 = (v: int): boolean => (v !== 0 && !(v & (v - 1)));
 
-function isPowerOf2(input: uint32_t): boolean
-{
-	let minus1: uint32_t;
-
-	if (!input) { return false; }
-
-	minus1 = input - 1;
-	return ((input | minus1) === (input ^ minus1));
-}
-
-function TwiddleUV(XSize: uint32_t, YSize: uint32_t, XPos: uint32_t, YPos: uint32_t): uint32_t
+function TwiddleUV(XSize: int, YSize: int, XPos: int, YPos: int): int
 {
 	// Initially assume X is the larger size.
-	let MinDimension: uint32_t = XSize;
-	let MaxValue: uint32_t = YPos;
-	let Twiddled: uint32_t = 0;
-	let SrcBitPos: uint32_t = 1;
-	let DstBitPos: uint32_t = 1;
-	let ShiftCount: int = 0;
+	let MinDimension = XSize;
+	let MaxValue = YPos;
+	let Twiddled = 0;
+	let SrcBitPos = 1;
+	let DstBitPos = 1;
+	let ShiftCount = 0;
 
 	// Check the sizes are valid.
 	assert(YPos < YSize);
@@ -433,19 +429,19 @@ function TwiddleUV(XSize: uint32_t, YSize: uint32_t, XPos: uint32_t, YPos: uint3
 	assert(isPowerOf2(XSize));
 
 	// If Y is the larger dimension - switch the min/max values.
-	if (YSize < XSize)
-	{
+	if (YSize < XSize) {
 		MinDimension = YSize;
 		MaxValue = XPos;
 	}
 
 	// Step through all the bits in the "minimum" dimension
-	while (SrcBitPos < MinDimension)
-	{
-		if (YPos & SrcBitPos) { Twiddled |= DstBitPos; }
-
-		if (XPos & SrcBitPos) { Twiddled |= (DstBitPos << 1); }
-
+	while (SrcBitPos < MinDimension) {
+		if (YPos & SrcBitPos) {
+			Twiddled |= DstBitPos;
+		}
+		if (XPos & SrcBitPos) {
+			Twiddled |= DstBitPos << 1;
+		}
 		SrcBitPos <<= 1;
 		DstBitPos <<= 2;
 		ShiftCount += 1;
@@ -460,7 +456,7 @@ function TwiddleUV(XSize: uint32_t, YSize: uint32_t, XPos: uint32_t, YPos: uint3
 
 const SET_OUTPUT = (buf: Uint8Array, i: int, c: Pixel32): void => { buf[i*4+0] = c.red; buf[i*4+1] = c.green; buf[i*4+2] = c.blue; buf[i*4+3] = c.alpha; };
 
-function mapDecompressedData(pOutput: Uint8Array, width: uint32_t, pWord: Pixel32[], words: PVRTCWordIndices, bpp: int): void
+function mapDecompressedData(pOutput: Uint8Array, width: int, pWord: Pixel32[], words: PVRTCWordIndices, bpp: int): void
 {
 	const wordWidth = (bpp === 2 ? 8 : 4);
 	const wordHeight = 4;
@@ -483,25 +479,25 @@ function mapDecompressedData(pOutput: Uint8Array, width: uint32_t, pWord: Pixel3
 	}
 }
 
-function pvrtcDecompress(pCompressedData: DataView, pDecompressedData: Uint8Array, width: uint32_t, height: uint32_t, bpp: int): uint32_t
+function pvrtcDecompress(pCompressedData: DataView, pDecompressedData: Uint8Array, width: int, height: int, bpp: int): uint32
 {
 	const wordWidth = (bpp === 2 ? 8 : 4);
 	const wordHeight = 4;
 
 	// Calculate number of words
-	let i32NumXWords: int = width / wordWidth;
-	let i32NumYWords: int = height / wordHeight;
+	const i32NumXWords = width / wordWidth;
+	const i32NumYWords = height / wordHeight;
 
 	// Structs used for decompression
 	let pPixels = new Array<Pixel32>(wordWidth * wordHeight);
 
 	// For each row of words
-	for (let wordY: int32_t = -1; wordY < i32NumYWords - 1; wordY++)
+	for (let wordY = -1; wordY < i32NumYWords - 1; wordY++)
 	{
 		// for each column of words
-		for (let wordX: int32_t = -1; wordX < i32NumXWords - 1; wordX++)
+		for (let wordX = -1; wordX < i32NumXWords - 1; wordX++)
 		{
-			let indices: PVRTCWordIndices = {
+			const indices: PVRTCWordIndices = {
 				P_0: wrapWordIndex(i32NumXWords, wordX),
 				P_1: wrapWordIndex(i32NumYWords, wordY),
 				Q_0: wrapWordIndex(i32NumXWords, wordX + 1),
@@ -513,29 +509,27 @@ function pvrtcDecompress(pCompressedData: DataView, pDecompressedData: Uint8Arra
 			};
 
 			// Work out the offsets into the twiddle structs, multiply by two as there are two members per word.
-			let WordOffsets: uint32_t[] = [
-				TwiddleUV(i32NumXWords, i32NumYWords, indices.P_0, indices.P_1) * 2,
-				TwiddleUV(i32NumXWords, i32NumYWords, indices.Q_0, indices.Q_1) * 2,
-				TwiddleUV(i32NumXWords, i32NumYWords, indices.R_0, indices.R_1) * 2,
-				TwiddleUV(i32NumXWords, i32NumYWords, indices.S_0, indices.S_1) * 2
-			];
+			const WordOffset_0 = TwiddleUV(i32NumXWords, i32NumYWords, indices.P_0, indices.P_1) * 2;
+			const WordOffset_1 = TwiddleUV(i32NumXWords, i32NumYWords, indices.Q_0, indices.Q_1) * 2;
+			const WordOffset_2 = TwiddleUV(i32NumXWords, i32NumYWords, indices.R_0, indices.R_1) * 2;
+			const WordOffset_3 = TwiddleUV(i32NumXWords, i32NumYWords, indices.S_0, indices.S_1) * 2;
 
 			// Access individual elements to fill out PVRTCWord
-			let P: PVRTCWord = {
-				colorData: pCompressedData.getUint32(WordOffsets[0] * 4 + 4),
-				modulationData: pCompressedData.getUint32(WordOffsets[0] * 4)
+			const P: PVRTCWord = {
+				colorData: pCompressedData.getUint32(WordOffset_0 * 4 + 4),
+				modulationData: pCompressedData.getUint32(WordOffset_0 * 4)
 			};
-			let Q: PVRTCWord = {
-				colorData: pCompressedData.getUint32(WordOffsets[1] * 4 + 4),
-				modulationData: pCompressedData.getUint32(WordOffsets[1] * 4)
+			const Q: PVRTCWord = {
+				colorData: pCompressedData.getUint32(WordOffset_1 * 4 + 4),
+				modulationData: pCompressedData.getUint32(WordOffset_1 * 4)
 			};
-			let R: PVRTCWord = {
-				colorData: pCompressedData.getUint32(WordOffsets[2] * 4 + 4),
-				modulationData: pCompressedData.getUint32(WordOffsets[2] * 4)
+			const R: PVRTCWord = {
+				colorData: pCompressedData.getUint32(WordOffset_2 * 4 + 4),
+				modulationData: pCompressedData.getUint32(WordOffset_2 * 4)
 			};
-			let S: PVRTCWord = {
-				colorData: pCompressedData.getUint32(WordOffsets[3] * 4 + 4),
-				modulationData: pCompressedData.getUint32(WordOffsets[3] * 4)
+			const S: PVRTCWord = {
+				colorData: pCompressedData.getUint32(WordOffset_3 * 4 + 4),
+				modulationData: pCompressedData.getUint32(WordOffset_3 * 4)
 			};
 
 			// assemble 4 words into struct to get decompressed pixels from
@@ -549,7 +543,7 @@ function pvrtcDecompress(pCompressedData: DataView, pDecompressedData: Uint8Arra
 	return width * height / (wordWidth / 2);
 }
 
-export function PVRTDecompressPVRTC(pCompressedData: DataView, Do2bitMode: boolean, XDim: int, YDim: int, pResultImage: Uint8Array): uint32_t
+export function PVRTDecompressPVRTC(pCompressedData: DataView, Do2bitMode: boolean, XDim: int, YDim: int, pResultImage: Uint8Array): uint32
 {
 	// Cast the output buffer to a Pixel32 pointer.
 	let pDecompressedData = pResultImage;
