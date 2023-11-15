@@ -1,50 +1,111 @@
-# PVR Viewer (VS Code Extension)
+# PVR Viewer
 
-This is the README for your extension "vscode-pvr-viewer". After writing up a brief description, we recommend including the following sections.
+Extension for Visual Studio Code that adds image preview for PVR (.pvr) texture files.
 
 ## Features
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+* Adds icon for .pvr files
+* Linear textures are converted to sRGB colorspace for display
 
-For example if there is an image subfolder under your extension project workspace:
+## Texture Formats
 
-\!\[feature X\]\(images/feature-x.png\)
+Initial goal is to support all formats required by OpenGL ES 3.2, listed below:
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+PVRTC
 
-## Requirements
+* ✅ PVRTC 2bpp RGB
+* ✅ PVRTC 2bpp RGBA
+* ✅ PVRTC 4bpp RGB
+* ✅ PVRTC 4bpp RGBA
+* PVRTC2 2bpp
+* ✅ PVRTC2 4bpp
+* PVRTC HDR 6bpp
+* PVRTC HDR 8bpp
+* PVRTC2 HDR 6bpp
+* PVRTC2 HDR 8bpp
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+ETC
 
-## Extension Settings
+* ✅ ETC1
+* ✅ ETC2 RGB
+* ✅ ETC2 RGBA
+* ✅ ETC2 RGB A1
+* ✅ EAC R11
+* ✅ EAC RG11
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+BC
 
-For example:
+* BC4
+* BC5
 
-This extension contributes the following settings:
+ASTC
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+* ASTC 4x4
+* ASTC 5x4
+* ASTC 5x5
+* ASTC 6x5
+* ASTC 6x6
+* ASTC 8x5
+* ASTC 8x6
+* ASTC 8x8
+* ASTC 10x5
+* ASTC 10x6
+* ASTC 10x8
+* ASTC 10x10
+* ASTC 12x10
+* ASTC 12x12
+* ASTC 3x3x3
+* ASTC 4x3x3
+* ASTC 4x4x3
+* ASTC 4x4x4
+* ASTC 5x4x4
+* ASTC 5x5x4
+* ASTC 5x5x5
+* ASTC 6x5x5
+* ASTC 6x6x5
+* ASTC 6x6x6
+
+Exponential
+
+* Shared Exponent RGB999 E5
+* RGBM
+* RGBD
+
+Uncompressed
+
+* R8 G8 B8 A8
+* R10 G10 B10 A2
+* R4 G4 B4 A4
+* R5 G5 B5 A1
+* B8 G8 R8 A8
+* R16 G16 B16 A16
+* R32 G32 B32 A32
+* R8 G8 B8
+* R5 G6 B5
+* R32 G32 B32
+* B10 G11 R11
+* R8 G8
+* L8 A8
+* R16 G16 B16
+* R16 G16
+* R32 G32
+* R8
+* A8
+* L8
+* R16
+* R32
+* R16 G16 B16
 
 ## Known Issues
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+PVRTC2 has very small artifacts.
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
+Not much supported yet, but could still be useful to people. Just wanted to get something out there.
 
-### 1.0.0
+### 0.1.0
 
-Initial release of vscode-pvr-viewer
+Initial release.
 
 ---
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-**Enjoy!**

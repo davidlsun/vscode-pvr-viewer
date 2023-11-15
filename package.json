@@ -1,8 +1,15 @@
 {
-  "name": "vscode-pvr-viewer",
+  "name": "pvr-viewer",
   "displayName": "PVR Viewer",
   "description": "Image preview for PVR texture files",
-  "version": "1.0.0",
+  "version": "0.1.0",
+  "publisher": "davidsun",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/davidlsun/vscode-pvr-viewer"
+  },
+  "homepage": "https://github.com/davidlsun/vscode-pvr-viewer/blob/main/README.md",
+  "license": "Apache-2.0",
   "engines": {
     "vscode": "^1.84.0"
   },
