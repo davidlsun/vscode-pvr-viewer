@@ -248,9 +248,9 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src * data:; style-src ${webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="${styleResetUri}" rel="stylesheet>
-    <link href="${styleVSCodeUri}" rel="stylesheet>
-    <link href="${styleMainUri}" rel="stylesheet>
+    <link href="${styleResetUri}" rel="stylesheet">
+    <link href="${styleVSCodeUri}" rel="stylesheet">
+    <link href="${styleMainUri}" rel="stylesheet">
 </head>
 <body>
     <div id="canvas-container"><img id="image-preview" src="data:image/png;base64,${pngData}"></div>
