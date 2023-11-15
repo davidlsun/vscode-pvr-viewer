@@ -1,8 +1,13 @@
-import * as vscode from 'vscode';
+import { getFloat16 } from './float16';
 
 type int = number;
+type float = number;
 
-const RGBforA8 = 255; // technically, sampling A8 textures should return black RGB, but this makes them harder to see
+const RGB_for_A8 = 255; // technically, sampling A8 textures should return black RGB, but this makes them harder to see
+
+const SATURATE = (x: int): int => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
+
+const floatToByte = (f: float): int => SATURATE(Math.round(f * 255.0));
 
 export function decompress_R8_G8_B8_A8(dec: Uint8Array, enc: DataView, width: int, height: int): void {
     for (let y = 0; y < height; y++) {
@@ -84,6 +89,23 @@ export function decompress_R5_G5_B5_A1(dec: Uint8Array, enc: DataView, width: in
     }
 }
 
+export function decompress_R16_G16_B16_A16_Float(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const dst = (y * width + x) * 4;
+            const src = (y * width + x) * 8;
+            const r = getFloat16(enc, src + 0, true);
+            const g = getFloat16(enc, src + 2, true);
+            const b = getFloat16(enc, src + 4, true);
+            const a = getFloat16(enc, src + 6, true);
+            dec[dst + 0] = floatToByte(r);
+            dec[dst + 1] = floatToByte(g);
+            dec[dst + 2] = floatToByte(b);
+            dec[dst + 3] = floatToByte(a);
+        }
+    }
+}
+
 export function decompress_R16_G16_B16_A16(dec: Uint8Array, enc: DataView, width: int, height: int): void {
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
@@ -97,6 +119,23 @@ export function decompress_R16_G16_B16_A16(dec: Uint8Array, enc: DataView, width
             dec[dst + 1] = (g >> 8);
             dec[dst + 2] = (b >> 8);
             dec[dst + 3] = (a >> 8);
+        }
+    }
+}
+
+export function decompress_R32_G32_B32_A32_Float(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const dst = (y * width + x) * 4;
+            const src = (y * width + x) * 16;
+            const r = enc.getFloat32(src + 0, true);
+            const g = enc.getFloat32(src + 4, true);
+            const b = enc.getFloat32(src + 8, true);
+            const a = enc.getFloat32(src + 12, true);
+            dec[dst + 0] = floatToByte(r);
+            dec[dst + 1] = floatToByte(g);
+            dec[dst + 2] = floatToByte(b);
+            dec[dst + 3] = floatToByte(a);
         }
     }
 }
@@ -148,6 +187,22 @@ export function decompress_R5_G6_B5(dec: Uint8Array, enc: DataView, width: int, 
     }
 }
 
+export function decompress_R16_G16_B16_Float(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const dst = (y * width + x) * 4;
+            const src = (y * width + x) * 6;
+            const r = getFloat16(enc, src + 0, true);
+            const g = getFloat16(enc, src + 2, true);
+            const b = getFloat16(enc, src + 4, true);
+            dec[dst + 0] = floatToByte(r);
+            dec[dst + 1] = floatToByte(g);
+            dec[dst + 2] = floatToByte(b);
+            dec[dst + 3] = 255;
+        }
+    }
+}
+
 export function decompress_R16_G16_B16(dec: Uint8Array, enc: DataView, width: int, height: int): void {
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
@@ -159,6 +214,22 @@ export function decompress_R16_G16_B16(dec: Uint8Array, enc: DataView, width: in
             dec[dst + 0] = (r >> 8);
             dec[dst + 1] = (g >> 8);
             dec[dst + 2] = (b >> 8);
+            dec[dst + 3] = 255;
+        }
+    }
+}
+
+export function decompress_R32_G32_B32_Float(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const dst = (y * width + x) * 4;
+            const src = (y * width + x) * 12;
+            const r = enc.getFloat32(src + 0, true);
+            const g = enc.getFloat32(src + 4, true);
+            const b = enc.getFloat32(src + 8, true);
+            dec[dst + 0] = floatToByte(r);
+            dec[dst + 1] = floatToByte(g);
+            dec[dst + 2] = floatToByte(b);
             dec[dst + 3] = 255;
         }
     }
@@ -207,6 +278,21 @@ export function decompress_L8_A8(dec: Uint8Array, enc: DataView, width: int, hei
     }
 }
 
+export function decompress_R16_G16_Float(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const dst = (y * width + x) * 4;
+            const src = (y * width + x) * 4;
+            const r = getFloat16(enc, src + 0, true);
+            const g = getFloat16(enc, src + 2, true);
+            dec[dst + 0] = floatToByte(r);
+            dec[dst + 1] = floatToByte(g);
+            dec[dst + 2] = 0;
+            dec[dst + 3] = 255;
+        }
+    }
+}
+
 export function decompress_R16_G16(dec: Uint8Array, enc: DataView, width: int, height: int): void {
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
@@ -216,6 +302,21 @@ export function decompress_R16_G16(dec: Uint8Array, enc: DataView, width: int, h
             const g = enc.getUint16(src + 2, true);
             dec[dst + 0] = (r >> 8);
             dec[dst + 1] = (g >> 8);
+            dec[dst + 2] = 0;
+            dec[dst + 3] = 255;
+        }
+    }
+}
+
+export function decompress_R32_G32_Float(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const dst = (y * width + x) * 4;
+            const src = (y * width + x) * 8;
+            const r = enc.getFloat32(src + 0, true);
+            const g = enc.getFloat32(src + 4, true);
+            dec[dst + 0] = floatToByte(r);
+            dec[dst + 1] = floatToByte(g);
             dec[dst + 2] = 0;
             dec[dst + 3] = 255;
         }
@@ -255,9 +356,9 @@ export function decompress_A8(dec: Uint8Array, enc: DataView, width: int, height
         for (let x = 0; x < width; x++) {
             const dst = (y * width + x) * 4;
             const src = (y * width + x) * 1;
-            dec[dst + 0] = RGBforA8;
-            dec[dst + 1] = RGBforA8;
-            dec[dst + 2] = RGBforA8;
+            dec[dst + 0] = RGB_for_A8;
+            dec[dst + 1] = RGB_for_A8;
+            dec[dst + 2] = RGB_for_A8;
             dec[dst + 3] = enc.getUint8(src + 0);
         }
     }
@@ -277,6 +378,20 @@ export function decompress_L8(dec: Uint8Array, enc: DataView, width: int, height
     }
 }
 
+export function decompress_R16_Float(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const dst = (y * width + x) * 4;
+            const src = (y * width + x) * 2;
+            const r = getFloat16(enc, src + 0, true);
+            dec[dst + 0] = floatToByte(r);
+            dec[dst + 1] = 0;
+            dec[dst + 2] = 0;
+            dec[dst + 3] = 255;
+        }
+    }
+}
+
 export function decompress_R16(dec: Uint8Array, enc: DataView, width: int, height: int): void {
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
@@ -291,7 +406,35 @@ export function decompress_R16(dec: Uint8Array, enc: DataView, width: int, heigh
     }
 }
 
+export function decompress_R32_Float(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const dst = (y * width + x) * 4;
+            const src = (y * width + x) * 4;
+            const r = enc.getFloat32(src + 0, true);
+            dec[dst + 0] = floatToByte(r);
+            dec[dst + 1] = 0;
+            dec[dst + 2] = 0;
+            dec[dst + 3] = 255;
+        }
+    }
+}
+
 export function decompress_R32(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const dst = (y * width + x) * 4;
+            const src = (y * width + x) * 4;
+            const r = enc.getUint32(src + 0, true);
+            dec[dst + 0] = (r >> 24);
+            dec[dst + 1] = 0;
+            dec[dst + 2] = 0;
+            dec[dst + 3] = 255;
+        }
+    }
+}
+
+export function decompress_B10_G11_R11_UFloat(dec: Uint8Array, enc: DataView, width: int, height: int): void {
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const dst = (y * width + x) * 4;

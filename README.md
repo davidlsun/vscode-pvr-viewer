@@ -69,11 +69,11 @@ ASTC
 
 Uncompressed
 
-* ✅ R8 G8 B8 A8 (SNorm, UInt, SInt)
-* ✅ R8 G8 B8 (SNorm, UInt, SInt)
-* ✅ R8 G8 (SNorm, UInt, SInt)
-* ✅ R8 (SNorm, UInt, SInt)
-* ✅ R10 G10 B10 A2 (UInt)
+* ✅ R8 G8 B8 A8 (SNorm, SInt)
+* ✅ R8 G8 B8 (SNorm, SInt)
+* ✅ R8 G8 (SNorm, SInt)
+* ✅ R8 (SNorm, SInt)
+* ✅ R10 G10 B10 A2
 * ✅ B8 G8 R8 A8
 * ✅ R4 G4 B4 A4
 * ✅ R5 G5 B5 A1
@@ -81,14 +81,14 @@ Uncompressed
 * ✅ L8 A8
 * ✅ L8
 * ✅ A8
-* ✅ R32 G32 B32 A32 (Float, SInt)
-* ✅ R32 G32 B32 (Float, SInt)
-* ✅ R32 G32 (Float, SInt)
-* ✅ R32 (Float, SInt)
-* ✅ R16 G16 B16 A16 (Float, SInt)
-* ✅ R16 G16 B16 (Float, SInt)
-* ✅ R16 G16 (Float, SInt)
-* ✅ R16 (Float, SInt)
+* ✅ R32 G32 B32 A32 (SInt)
+* ✅ R32 G32 B32 (SInt)
+* ✅ R32 G32 (SInt)
+* ✅ R32 (SInt)
+* ✅ R16 G16 B16 A16 (SInt)
+* ✅ R16 G16 B16 (SInt)
+* ✅ R16 G16 (SInt)
+* ✅ R16 (SInt)
 * B10 G11 R11 (UFloat)
 
 Exponential

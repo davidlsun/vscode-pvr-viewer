@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import sharp, { SharpOptions } from 'sharp';
+import sharp from 'sharp';
 import * as pvr from './pvr';
 import * as pvrtc from './pvrtc';
 import * as etc from './etc';
@@ -112,7 +112,7 @@ export default class PVRLoader {
                     } else if (channelType === pvr.VariableType.SignedByteNorm) {
                         // linear
                     } else if (channelType === pvr.VariableType.UnsignedByte) {
-                        // linear
+                        eightcc.decompress_R8_G8_B8_A8(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.SignedByte) {
                         // linear
                     }
@@ -126,7 +126,7 @@ export default class PVRLoader {
                     if (channelType === pvr.VariableType.UnsignedIntegerNorm) {
                         eightcc.decompress_R10_G10_B10_A2(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.UnsignedInteger) {
-                        // linear
+                        eightcc.decompress_R10_G10_B10_A2(decData, encData, width, height); // linear
                     }
                     break;
                 case 'rgba4444': // R4 G4 B4 A4
@@ -140,20 +140,20 @@ export default class PVRLoader {
                     }
                     break;
                 case 'rgba@@@@': // R16 G16 B16 A16
-                    if (channelType === pvr.VariableType.UnsignedShort) {
+                    if (channelType === pvr.VariableType.SignedFloat) {
+                        eightcc.decompress_R16_G16_B16_A16_Float(decData, encData, width, height); // linear
+                    } else if (channelType === pvr.VariableType.UnsignedShort) {
                         eightcc.decompress_R16_G16_B16_A16(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.SignedShort) {
-                        // linear
-                    } else if (channelType === pvr.VariableType.SignedFloat) {
                         // linear
                     }
                     break;
                 case 'rgbaPPPP': // R32 G32 B32 A32
-                    if (channelType === pvr.VariableType.UnsignedInteger) {
+                    if (channelType === pvr.VariableType.SignedFloat) {
+                        eightcc.decompress_R32_G32_B32_A32_Float(decData, encData, width, height); // linear
+                    } else if (channelType === pvr.VariableType.UnsignedInteger) {
                         eightcc.decompress_R32_G32_B32_A32(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.SignedInteger) {
-                        // linear
-                    } else if (channelType === pvr.VariableType.SignedFloat) {
                         // linear
                     }
                     break;
@@ -163,7 +163,7 @@ export default class PVRLoader {
                     } else if (channelType === pvr.VariableType.SignedByteNorm) {
                         // linear
                     } else if (channelType === pvr.VariableType.UnsignedByte) {
-                        // linear
+                        eightcc.decompress_R8_G8_B8(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.SignedByte) {
                         // linear
                     }
@@ -174,25 +174,25 @@ export default class PVRLoader {
                     }
                     break;
                 case 'rgb @@@ ': // R16 G16 B16
-                    if (channelType === pvr.VariableType.UnsignedShort) {
+                    if (channelType === pvr.VariableType.SignedFloat) {
+                        eightcc.decompress_R16_G16_B16_Float(decData, encData, width, height); // linear
+                    } else if (channelType === pvr.VariableType.UnsignedShort) {
                         eightcc.decompress_R16_G16_B16(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.SignedShort) {
-                        // linear
-                    } else if (channelType === pvr.VariableType.SignedFloat) {
                         // linear
                     }
                     break;
                 case 'rgb PPP ': // R32 G32 B32
-                    if (channelType === pvr.VariableType.UnsignedInteger) {
+                    if (channelType === pvr.VariableType.SignedFloat) {
+                        eightcc.decompress_R32_G32_B32_Float(decData, encData, width, height); // linear
+                    } else if (channelType === pvr.VariableType.UnsignedInteger) {
                         eightcc.decompress_R32_G32_B32(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.SignedInteger) {
-                        // linear
-                    } else if (channelType === pvr.VariableType.SignedFloat) {
                         // linear
                     }
                 case 'bgr :;; ': // B10 G11 R11
                     if (channelType === pvr.VariableType.UnsignedFloat) {
-                        // linear
+                        eightcc.decompress_B10_G11_R11_UFloat(decData, encData, width, height); // linear
                     }
                     break;
                 case 'rg  88  ': // R8 G8
@@ -201,7 +201,7 @@ export default class PVRLoader {
                     } else if (channelType === pvr.VariableType.SignedByteNorm) {
                         // linear
                     } else if (channelType === pvr.VariableType.UnsignedByte) {
-                        // linear
+                        eightcc.decompress_R8_G8(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.SignedByte) {
                         // linear
                     }
@@ -213,20 +213,20 @@ export default class PVRLoader {
                     }
                     break;
                 case 'rg  @@  ': // R16 G16
-                    if (channelType === pvr.VariableType.UnsignedShort) {
+                    if (channelType === pvr.VariableType.SignedFloat) {
+                        eightcc.decompress_R16_G16_Float(decData, encData, width, height); // linear
+                    } else if (channelType === pvr.VariableType.UnsignedShort) {
                         eightcc.decompress_R16_G16(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.SignedShort) {
-                        // linear
-                    } else if (channelType === pvr.VariableType.SignedFloat) {
                         // linear
                     }
                     break;
                 case 'rg  PP  ': // R32 G32
-                    if (channelType === pvr.VariableType.UnsignedInteger) {
+                    if (channelType === pvr.VariableType.SignedFloat) {
+                        eightcc.decompress_R32_G32_Float(decData, encData, width, height); // linear
+                    } else if (channelType === pvr.VariableType.UnsignedInteger) {
                         eightcc.decompress_R32_G32(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.SignedInteger) {
-                        // linear
-                    } else if (channelType === pvr.VariableType.SignedFloat) {
                         // linear
                     }
                     break;
@@ -236,7 +236,7 @@ export default class PVRLoader {
                     } else if (channelType === pvr.VariableType.SignedByteNorm) {
                         // linear
                     } else if (channelType === pvr.VariableType.UnsignedByte) {
-                        // linear
+                        eightcc.decompress_R8(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.SignedByte) {
                         // linear
                     }
@@ -252,20 +252,20 @@ export default class PVRLoader {
                     }
                     break;
                 case 'r   @   ': // R16
-                    if (channelType === pvr.VariableType.UnsignedShort) {
+                    if (channelType === pvr.VariableType.SignedFloat) {
+                        eightcc.decompress_R16_Float(decData, encData, width, height); // linear
+                    } else if (channelType === pvr.VariableType.UnsignedShort) {
                         eightcc.decompress_R16(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.SignedShort) {
-                        // linear
-                    } else if (channelType === pvr.VariableType.SignedFloat) {
                         // linear
                     }
                     break;
                 case 'r   P   ': // R32
-                    if (channelType === pvr.VariableType.UnsignedInteger) {
+                    if (channelType === pvr.VariableType.SignedFloat) {
+                        eightcc.decompress_R32_Float(decData, encData, width, height); // linear
+                    } else if (channelType === pvr.VariableType.UnsignedInteger) {
                         eightcc.decompress_R32(decData, encData, width, height); // linear
                     } else if (channelType === pvr.VariableType.SignedInteger) {
-                        // linear
-                    } else if (channelType === pvr.VariableType.SignedFloat) {
                         // linear
                     }
                     break;
@@ -386,7 +386,7 @@ export default class PVRLoader {
             }
         }
 
-        const options:SharpOptions = {
+        const options: sharp.SharpOptions = {
             raw: {
                 width: width, 
                 height: height,
