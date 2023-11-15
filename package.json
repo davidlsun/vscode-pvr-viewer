@@ -2,7 +2,7 @@
   "name": "pvr-viewer",
   "displayName": "PVR Viewer",
   "description": "Image preview for PVR texture files",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "davidsun",
   "repository": {
     "type": "git",
