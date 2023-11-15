@@ -5,9 +5,10 @@ Extension for Visual Studio Code that adds image preview for PVR (.pvr) texture 
 ## Features
 
 * Includes file icon theme for .pvr files.
-* Linear textures are converted to sRGB colorspace for display.
 * No zooming or other user control in the viewer.
-* No support for viewing cubemaps, mipmaps, 3D textures.
+* No support for viewing cubemaps, mipmaps, arrays, 3D textures.
+* Linear textures not converted to sRGB colorspace for display.
+* Floating point textures have no exposure control for display.
 
 ## Texture Formats
 
@@ -69,10 +70,10 @@ ASTC
 
 Uncompressed
 
-* ✅ R8 G8 B8 A8 (SNorm, SInt)
-* ✅ R8 G8 B8 (SNorm, SInt)
-* ✅ R8 G8 (SNorm, SInt)
-* ✅ R8 (SNorm, SInt)
+* ✅ R8 G8 B8 A8
+* ✅ R8 G8 B8
+* ✅ R8 G8
+* ✅ R8
 * ✅ R10 G10 B10 A2
 * ✅ B8 G8 R8 A8
 * ✅ R4 G4 B4 A4
@@ -81,19 +82,16 @@ Uncompressed
 * ✅ L8 A8
 * ✅ L8
 * ✅ A8
-* ✅ R32 G32 B32 A32 (SInt)
-* ✅ R32 G32 B32 (SInt)
-* ✅ R32 G32 (SInt)
-* ✅ R32 (SInt)
-* ✅ R16 G16 B16 A16 (SInt)
-* ✅ R16 G16 B16 (SInt)
-* ✅ R16 G16 (SInt)
-* ✅ R16 (SInt)
-* B10 G11 R11 (UFloat)
-
-Exponential
-
-* Shared Exponent RGB999 E5
+* ✅ R32 G32 B32 A32
+* ✅ R32 G32 B32
+* ✅ R32 G32
+* ✅ R32
+* ✅ R16 G16 B16 A16
+* ✅ R16 G16 B16
+* ✅ R16 G16
+* ✅ R16
+* B10 G11 R11
+* R9 G9 B9 E5
 * RGBM
 * RGBD
 

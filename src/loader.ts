@@ -9,13 +9,10 @@ type byte = number;
 type int = number;
 type float = number;
 
-function srgbToLinear(x: float): float {
-    return x <= 0.04045 ? x * 0.0773993808 : Math.pow((x + 0.055) / 1.055, 2.4);
-}
-
-function linearToSrgb(x: float): float {
-    return x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 0.41666) - 0.055;
-}
+const SATURATE = (x: int): int => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
+const floatToByte = (f: float): int => SATURATE(Math.round(f * 255.0));
+const srgbToLinear = (x: float): float => (x <= 0.04045 ? x * 0.0773993808 : Math.pow((x + 0.055) * 0.947867299, 2.4));
+const linearToSrgb = (x: float): float => (x <= 0.0031308 ? 12.92 * x : 1.055 * Math.pow(x, 0.416666667) - 0.055);
 
 function readEightcc(header: DataView): string {
     const cc =  Array<byte>(8);
@@ -107,280 +104,342 @@ export default class PVRLoader {
         if (pixelFormatHigh !== 0) {
             switch (readEightcc(header)) {
                 case 'rgba8888': // R8 G8 B8 A8
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        eightcc.decompress_R8_G8_B8_A8(decData, encData, width, height); // linear and srgb
-                    } else if (channelType === pvr.VariableType.SignedByteNorm) {
-                        // linear
-                    } else if (channelType === pvr.VariableType.UnsignedByte) {
-                        eightcc.decompress_R8_G8_B8_A8(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedByte) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm: // srgb
+                        case pvr.VariableType.SignedByteNorm:
+                        case pvr.VariableType.UnsignedByte:
+                        case pvr.VariableType.SignedByte:
+                            eightcc.decompress_R8_G8_B8_A8(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'bgra8888': // B8 G8 R8 A8
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        eightcc.decompress_B8_G8_R8_A8(decData, encData, width, height); // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm:
+                            eightcc.decompress_B8_G8_R8_A8(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'rgba:::2': // R10 G10 B10 A2
-                    if (channelType === pvr.VariableType.UnsignedIntegerNorm) {
-                        eightcc.decompress_R10_G10_B10_A2(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.UnsignedInteger) {
-                        eightcc.decompress_R10_G10_B10_A2(decData, encData, width, height); // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedIntegerNorm:
+                        case pvr.VariableType.UnsignedInteger:
+                            eightcc.decompress_R10_G10_B10_A2(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'rgba4444': // R4 G4 B4 A4
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        eightcc.decompress_R4_G4_B4_A4(decData, encData, width, height); // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm:
+                            eightcc.decompress_R4_G4_B4_A4(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'rgba5551': // R5 G5 B5 A1
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        eightcc.decompress_R5_G5_B5_A1(decData, encData, width, height); // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm:
+                            eightcc.decompress_R5_G5_B5_A1(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'rgba@@@@': // R16 G16 B16 A16
-                    if (channelType === pvr.VariableType.SignedFloat) {
-                        eightcc.decompress_R16_G16_B16_A16_Float(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.UnsignedShort) {
-                        eightcc.decompress_R16_G16_B16_A16(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedShort) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.SignedFloat:
+                            eightcc.decompress_R16_G16_B16_A16_Float(decData, encData, width, height);
+                            break;
+                        case pvr.VariableType.UnsignedShort:
+                        case pvr.VariableType.SignedShort:
+                            eightcc.decompress_R16_G16_B16_A16(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'rgbaPPPP': // R32 G32 B32 A32
-                    if (channelType === pvr.VariableType.SignedFloat) {
-                        eightcc.decompress_R32_G32_B32_A32_Float(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.UnsignedInteger) {
-                        eightcc.decompress_R32_G32_B32_A32(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedInteger) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.SignedFloat:
+                            eightcc.decompress_R32_G32_B32_A32_Float(decData, encData, width, height);
+                            break;
+                        case pvr.VariableType.UnsignedInteger:
+                        case pvr.VariableType.SignedInteger:
+                            eightcc.decompress_R32_G32_B32_A32(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'rgb 888 ': // R8 G8 B8
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        eightcc.decompress_R8_G8_B8(decData, encData, width, height); // linear and srgb
-                    } else if (channelType === pvr.VariableType.SignedByteNorm) {
-                        // linear
-                    } else if (channelType === pvr.VariableType.UnsignedByte) {
-                        eightcc.decompress_R8_G8_B8(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedByte) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm: // srgb
+                        case pvr.VariableType.SignedByteNorm:
+                        case pvr.VariableType.UnsignedByte:
+                        case pvr.VariableType.SignedByte:
+                            eightcc.decompress_R8_G8_B8(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'rgb 565 ': // R5 G6 R5
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        eightcc.decompress_R5_G6_B5(decData, encData, width, height); // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm:
+                            eightcc.decompress_R5_G6_B5(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'rgb @@@ ': // R16 G16 B16
-                    if (channelType === pvr.VariableType.SignedFloat) {
-                        eightcc.decompress_R16_G16_B16_Float(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.UnsignedShort) {
-                        eightcc.decompress_R16_G16_B16(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedShort) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.SignedFloat:
+                            eightcc.decompress_R16_G16_B16_Float(decData, encData, width, height);
+                            break;
+                        case pvr.VariableType.UnsignedShort:
+                        case pvr.VariableType.SignedShort:
+                            eightcc.decompress_R16_G16_B16(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'rgb PPP ': // R32 G32 B32
-                    if (channelType === pvr.VariableType.SignedFloat) {
-                        eightcc.decompress_R32_G32_B32_Float(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.UnsignedInteger) {
-                        eightcc.decompress_R32_G32_B32(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedInteger) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.SignedFloat:
+                            eightcc.decompress_R32_G32_B32_Float(decData, encData, width, height);
+                            break;
+                        case pvr.VariableType.UnsignedInteger:
+                        case pvr.VariableType.SignedInteger:
+                            eightcc.decompress_R32_G32_B32(decData, encData, width, height);
+                            break;
                     }
                 case 'bgr :;; ': // B10 G11 R11
-                    if (channelType === pvr.VariableType.UnsignedFloat) {
-                        eightcc.decompress_B10_G11_R11_UFloat(decData, encData, width, height); // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedFloat:
+                            eightcc.decompress_B10_G11_R11_UFloat(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'rg  88  ': // R8 G8
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        eightcc.decompress_R8_G8(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedByteNorm) {
-                        // linear
-                    } else if (channelType === pvr.VariableType.UnsignedByte) {
-                        eightcc.decompress_R8_G8(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedByte) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm:
+                        case pvr.VariableType.SignedByteNorm:
+                        case pvr.VariableType.UnsignedByte:
+                        case pvr.VariableType.SignedByte:
+                            eightcc.decompress_R8_G8(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'la  88  ': // L8 A8
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        // linear
-                        eightcc.decompress_L8_A8(decData, encData, width, height); // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm:
+                            eightcc.decompress_L8_A8(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'rg  @@  ': // R16 G16
-                    if (channelType === pvr.VariableType.SignedFloat) {
-                        eightcc.decompress_R16_G16_Float(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.UnsignedShort) {
-                        eightcc.decompress_R16_G16(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedShort) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.SignedFloat:
+                            eightcc.decompress_R16_G16_Float(decData, encData, width, height);
+                            break;
+                        case pvr.VariableType.UnsignedShort:
+                        case pvr.VariableType.SignedShort:
+                            eightcc.decompress_R16_G16(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'rg  PP  ': // R32 G32
-                    if (channelType === pvr.VariableType.SignedFloat) {
-                        eightcc.decompress_R32_G32_Float(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.UnsignedInteger) {
-                        eightcc.decompress_R32_G32(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedInteger) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.SignedFloat:
+                            eightcc.decompress_R32_G32_Float(decData, encData, width, height);
+                            break;
+                        case pvr.VariableType.UnsignedInteger:
+                        case pvr.VariableType.SignedInteger:
+                            eightcc.decompress_R32_G32(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'r   8   ': // R8
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        eightcc.decompress_R8(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedByteNorm) {
-                        // linear
-                    } else if (channelType === pvr.VariableType.UnsignedByte) {
-                        eightcc.decompress_R8(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedByte) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm:
+                        case pvr.VariableType.SignedByteNorm:
+                        case pvr.VariableType.UnsignedByte:
+                        case pvr.VariableType.SignedByte:
+                            eightcc.decompress_R8(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'a   8   ': // A8
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        eightcc.decompress_A8(decData, encData, width, height); // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm:
+                            eightcc.decompress_A8(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'l   8   ': // L8
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        eightcc.decompress_L8(decData, encData, width, height); // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm:
+                            eightcc.decompress_L8(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'r   @   ': // R16
-                    if (channelType === pvr.VariableType.SignedFloat) {
-                        eightcc.decompress_R16_Float(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.UnsignedShort) {
-                        eightcc.decompress_R16(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedShort) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.SignedFloat:
+                            eightcc.decompress_R16_Float(decData, encData, width, height);
+                            break;
+                        case pvr.VariableType.UnsignedShort:
+                        case pvr.VariableType.SignedShort:
+                            eightcc.decompress_R16(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case 'r   P   ': // R32
-                    if (channelType === pvr.VariableType.SignedFloat) {
-                        eightcc.decompress_R32_Float(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.UnsignedInteger) {
-                        eightcc.decompress_R32(decData, encData, width, height); // linear
-                    } else if (channelType === pvr.VariableType.SignedInteger) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.SignedFloat:
+                            eightcc.decompress_R32_Float(decData, encData, width, height);
+                            break;
+                        case pvr.VariableType.UnsignedInteger:
+                        case pvr.VariableType.SignedInteger:
+                            eightcc.decompress_R32(decData, encData, width, height);
+                            break;
                     }
                     break;
             }
         } else {
             switch (pixelFormat) {
                 case pvr.PixelFormat.PVRTCI_2bpp_RGB:
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        pvrtc.decompress_PVRTC(decData, encData, width, height, true, false); // linear and srgb
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm: // srgb
+                            pvrtc.decompress_PVRTC(decData, encData, width, height, true, false);
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCI_2bpp_RGBA:
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        pvrtc.decompress_PVRTC(decData, encData, width, height, true, true); // linear and srgb
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm: // srgb
+                            pvrtc.decompress_PVRTC(decData, encData, width, height, true, true);
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCI_4bpp_RGB:
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        pvrtc.decompress_PVRTC(decData, encData, width, height, false, false); // linear and srgb
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm: // srgb
+                            pvrtc.decompress_PVRTC(decData, encData, width, height, false, false);
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCI_4bpp_RGBA:
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        pvrtc.decompress_PVRTC(decData, encData, width, height, false, true); // linear and srgb
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm: // srgb
+                            pvrtc.decompress_PVRTC(decData, encData, width, height, false, true);
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCII_2bpp:
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        pvrtc.decompress_PVRTC2(decData, encData, width, height, true); // linear and srgb
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm: // srgb
+                            pvrtc.decompress_PVRTC2(decData, encData, width, height, true);
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCII_4bpp:
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        pvrtc.decompress_PVRTC2(decData, encData, width, height, false); // linear and srgb
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm: // srgb
+                            pvrtc.decompress_PVRTC2(decData, encData, width, height, false);
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.ETC1:
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        etc.decompress_ETC2_RGB(decData, encData, width, height); // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm:
+                            etc.decompress_ETC2_RGB(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.ETC2_RGB:
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        etc.decompress_ETC2_RGB(decData, encData, width, height); // linear and srgb
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm: // srgb
+                            etc.decompress_ETC2_RGB(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.ETC2_RGBA:
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        etc.decompress_ETC2_RGBA(decData, encData, width, height); // linear and srgb
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm: // srgb
+                            etc.decompress_ETC2_RGBA(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.ETC2_RGB_A1:
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        etc.decompress_ETC2_RGB_A1(decData, encData, width, height); // linear and srgb
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm: // srgb
+                            etc.decompress_ETC2_RGB_A1(decData, encData, width, height);
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.EAC_R11:
-                    if (channelType === pvr.VariableType.UnsignedShortNorm) {
-                        etc.decompress_EAC_R11(decData, encData, width, height, false); // linear
-                    }
-                    break;
-                case pvr.PixelFormat.EAC_R11:
-                    if (channelType === pvr.VariableType.SignedShortNorm) {
-                        etc.decompress_EAC_R11(decData, encData, width, height, true); // linear
-                    }
-                    break;
-                case pvr.PixelFormat.EAC_RG11:
-                    if (channelType === pvr.VariableType.UnsignedIntegerNorm) {
-                        etc.decompress_EAC_RG11(decData, encData, width, height, false); // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedShortNorm:
+                            etc.decompress_EAC_R11(decData, encData, width, height, false);
+                            break;
+                        case pvr.VariableType.SignedShortNorm:
+                            etc.decompress_EAC_R11(decData, encData, width, height, true);
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.EAC_RG11:
-                    if (channelType === pvr.VariableType.SignedIntegerNorm) {
-                        etc.decompress_EAC_RG11(decData, encData, width, height, true); // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedIntegerNorm:
+                            etc.decompress_EAC_RG11(decData, encData, width, height, false);
+                            break;
+                        case pvr.VariableType.SignedIntegerNorm:
+                            etc.decompress_EAC_RG11(decData, encData, width, height, true);
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCI_HDR_6bpp:
-                    if (channelType === pvr.VariableType.SignedFloat) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.SignedFloat:
+                            // ...
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCI_HDR_8bpp:
-                    if (channelType === pvr.VariableType.SignedFloat) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.SignedFloat:
+                            // ...
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCII_HDR_6bpp:
-                    if (channelType === pvr.VariableType.SignedFloat) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.SignedFloat:
+                            // ...
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCII_HDR_8bpp:
-                    if (channelType === pvr.VariableType.SignedFloat) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.SignedFloat:
+                            // ...
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.RGBM:
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm:
+                            // ...
+                            break;
                     }
                     break;
                 case pvr.PixelFormat.RGBD:
-                    if (channelType === pvr.VariableType.UnsignedByteNorm) {
-                        // linear
+                    switch (channelType) {
+                        case pvr.VariableType.UnsignedByteNorm:
+                            // ...
+                            break;
                     }
                     break;
             }
         }
 
-        if (colourSpace === pvr.ColourSpace.Linear) {
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const i = (y * width + x) * 4;
-                    for (let c = 0; c < 3; c++) {
-                        decData[i + c] = Math.round(linearToSrgb(decData[i + c] / 255.0) * 255.0);
+        if (false) {
+            if (colourSpace === pvr.ColourSpace.Linear) {
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const i = (y * width + x) * 4;
+                        for (let c = 0; c < 3; c++) {
+                            decData[i + c] = floatToByte(linearToSrgb(decData[i + c] / 255.0));
+                        }
                     }
                 }
             }
