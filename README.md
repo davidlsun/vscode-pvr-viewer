@@ -1,6 +1,6 @@
 # PVR Viewer
 
-Extension for Visual Studio Code that adds image preview for PVR (.pvr) texture files.
+Extension for Visual Studio Code that adds image preview for PVR (.pvr) texture files. All texture decompression is written in JavaScript, so it works with any graphics card.
 
 ## Features
 
