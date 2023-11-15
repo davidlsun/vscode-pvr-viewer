@@ -601,7 +601,7 @@ function pvrtcDecompress(pDecompressedData: Uint8Array, pCompressedData: DataVie
     }
 }
 
-export function decompress_PVRTC(pResultImage: Uint8Array, pCompressedData: DataView, width: int, height: int, do2bitMode: boolean): void
+export function decompressSurface(pResultImage: Uint8Array, pCompressedData: DataView, width: int, height: int, do2bitMode: boolean): void
 {
     // Cast the output buffer to a Pixel32 pointer.
     let pDecompressedData = pResultImage;
@@ -631,9 +631,14 @@ export function decompress_PVRTC(pResultImage: Uint8Array, pCompressedData: Data
     }
 }
 
+export function decompress_PVRTC(pResultImage: Uint8Array, pCompressedData: DataView, width: int, height: int, do2bitMode: boolean): void
+{
+    PVRTC2_Mode = false;
+    decompressSurface(pResultImage, pCompressedData, width, height, do2bitMode);
+}
+
 export function decompress_PVRTC2(pResultImage: Uint8Array, pCompressedData: DataView, width: int, height: int, do2bitMode: boolean): void
 {
     PVRTC2_Mode = true;
-    decompress_PVRTC(pResultImage, pCompressedData, width, height, do2bitMode);
-    PVRTC2_Mode = false;
+    decompressSurface(pResultImage, pCompressedData, width, height, do2bitMode);
 }
