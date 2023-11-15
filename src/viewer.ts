@@ -74,7 +74,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <link href="${styleMainUri}" rel="stylesheet">
 </head>
 <body>
-    <div id="canvas-container"><img id="image-preview" src="data:image/png;base64,${imgData}"></div>
+    <div class="main" data-vscode-context='{"webviewSection": "main", "preventDefaultContextMenuItems": true}'><img id="image-preview" src="data:image/png;base64,${imgData}"></div>
 </body>
 </html>`;
     }

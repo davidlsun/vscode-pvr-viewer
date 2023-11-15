@@ -1,7 +1,4 @@
-#canvas-container {
+.main {
 	overflow: auto;
-}
-
-#image-preview {
-	width: 100%;
+	user-select: none;
 }
