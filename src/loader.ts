@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
-import sharp from 'sharp';
 import * as pvr from './pvr';
 import * as pvrtc from './pvrtc';
 import * as etc from './etc';
 import * as eightcc from './eightcc';
+import sharp from 'sharp';
 
 type byte = number;
 type int = number;
@@ -35,9 +35,9 @@ export default class PVRLoader {
     private _numSurfaces: int = 0; // 1 in array
     private _numFaces: int = 0; // 1 in cubemap
     private _mipMapCount: int = 0; // 1 mip level
-    private _premultiplied: boolean = false;
 
     public get width(): int { return this._width; }
+    public get height(): int { return this._height; }
 
     public static async readFile(uri: vscode.Uri): Promise<Buffer> {
         const data = await vscode.workspace.fs.readFile(uri);
@@ -56,7 +56,6 @@ export default class PVRLoader {
         const version = header.getUint32(0, true);
         if (version !== pvr.PVRTEX3_IDENT) { throw new Error(); }
         const flags = header.getUint32(4, true);
-        this._premultiplied = ((flags & pvr.PVRTEX3_PREMULTIPLIED) !== 0);
         const pixelFormat: pvr.PixelFormat = header.getUint32(8, true);
         const pixelFormatHigh = header.getUint32(12, true); // 0
         const colourSpace: pvr.ColourSpace = header.getUint32(16, true);
@@ -69,6 +68,7 @@ export default class PVRLoader {
         this._mipMapCount = header.getUint32(44, true);
         const metaDataSize = header.getUint32(48, true);
 
+        const premultiplied = ((flags & pvr.PVRTEX3_PREMULTIPLIED) !== 0);
         let flipX = false;
         let flipY = false;
         let flipZ = false;
@@ -98,8 +98,8 @@ export default class PVRLoader {
         const height = this._height;
 
         // read bulk color data
-        const encData = new DataView(data.buffer, data.byteOffset + pvr.HEADER_SIZE + metaDataSize, data.byteLength - pvr.HEADER_SIZE - metaDataSize);
-        const decData = new Uint8Array(width * height * 4);
+        const enc = new DataView(data.buffer, data.byteOffset + pvr.HEADER_SIZE + metaDataSize, data.byteLength - pvr.HEADER_SIZE - metaDataSize);
+        const dec = new Uint8Array(width * height * 4);
 
         if (pixelFormatHigh !== 0) {
             switch (readEightcc(header)) {
@@ -109,14 +109,14 @@ export default class PVRLoader {
                         case pvr.VariableType.SignedByteNorm:
                         case pvr.VariableType.UnsignedByte:
                         case pvr.VariableType.SignedByte:
-                            eightcc.decompress_R8_G8_B8_A8(decData, encData, width, height);
+                            eightcc.decompress_R8_G8_B8_A8(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'bgra8888': // B8 G8 R8 A8
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm:
-                            eightcc.decompress_B8_G8_R8_A8(decData, encData, width, height);
+                            eightcc.decompress_B8_G8_R8_A8(dec, enc, width, height);
                             break;
                     }
                     break;
@@ -124,43 +124,43 @@ export default class PVRLoader {
                     switch (channelType) {
                         case pvr.VariableType.UnsignedIntegerNorm:
                         case pvr.VariableType.UnsignedInteger:
-                            eightcc.decompress_R10_G10_B10_A2(decData, encData, width, height);
+                            eightcc.decompress_R10_G10_B10_A2(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'rgba4444': // R4 G4 B4 A4
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm:
-                            eightcc.decompress_R4_G4_B4_A4(decData, encData, width, height);
+                            eightcc.decompress_R4_G4_B4_A4(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'rgba5551': // R5 G5 B5 A1
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm:
-                            eightcc.decompress_R5_G5_B5_A1(decData, encData, width, height);
+                            eightcc.decompress_R5_G5_B5_A1(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'rgba@@@@': // R16 G16 B16 A16
                     switch (channelType) {
                         case pvr.VariableType.SignedFloat:
-                            eightcc.decompress_R16_G16_B16_A16_Float(decData, encData, width, height);
+                            eightcc.decompress_R16_G16_B16_A16_Float(dec, enc, width, height);
                             break;
                         case pvr.VariableType.UnsignedShort:
                         case pvr.VariableType.SignedShort:
-                            eightcc.decompress_R16_G16_B16_A16(decData, encData, width, height);
+                            eightcc.decompress_R16_G16_B16_A16(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'rgbaPPPP': // R32 G32 B32 A32
                     switch (channelType) {
                         case pvr.VariableType.SignedFloat:
-                            eightcc.decompress_R32_G32_B32_A32_Float(decData, encData, width, height);
+                            eightcc.decompress_R32_G32_B32_A32_Float(dec, enc, width, height);
                             break;
                         case pvr.VariableType.UnsignedInteger:
                         case pvr.VariableType.SignedInteger:
-                            eightcc.decompress_R32_G32_B32_A32(decData, encData, width, height);
+                            eightcc.decompress_R32_G32_B32_A32(dec, enc, width, height);
                             break;
                     }
                     break;
@@ -170,42 +170,42 @@ export default class PVRLoader {
                         case pvr.VariableType.SignedByteNorm:
                         case pvr.VariableType.UnsignedByte:
                         case pvr.VariableType.SignedByte:
-                            eightcc.decompress_R8_G8_B8(decData, encData, width, height);
+                            eightcc.decompress_R8_G8_B8(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'rgb 565 ': // R5 G6 R5
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm:
-                            eightcc.decompress_R5_G6_B5(decData, encData, width, height);
+                            eightcc.decompress_R5_G6_B5(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'rgb @@@ ': // R16 G16 B16
                     switch (channelType) {
                         case pvr.VariableType.SignedFloat:
-                            eightcc.decompress_R16_G16_B16_Float(decData, encData, width, height);
+                            eightcc.decompress_R16_G16_B16_Float(dec, enc, width, height);
                             break;
                         case pvr.VariableType.UnsignedShort:
                         case pvr.VariableType.SignedShort:
-                            eightcc.decompress_R16_G16_B16(decData, encData, width, height);
+                            eightcc.decompress_R16_G16_B16(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'rgb PPP ': // R32 G32 B32
                     switch (channelType) {
                         case pvr.VariableType.SignedFloat:
-                            eightcc.decompress_R32_G32_B32_Float(decData, encData, width, height);
+                            eightcc.decompress_R32_G32_B32_Float(dec, enc, width, height);
                             break;
                         case pvr.VariableType.UnsignedInteger:
                         case pvr.VariableType.SignedInteger:
-                            eightcc.decompress_R32_G32_B32(decData, encData, width, height);
+                            eightcc.decompress_R32_G32_B32(dec, enc, width, height);
                             break;
                     }
                 case 'bgr :;; ': // B10 G11 R11
                     switch (channelType) {
                         case pvr.VariableType.UnsignedFloat:
-                            eightcc.decompress_B10_G11_R11_UFloat(decData, encData, width, height);
+                            eightcc.decompress_B10_G11_R11_UFloat(dec, enc, width, height);
                             break;
                     }
                     break;
@@ -215,36 +215,36 @@ export default class PVRLoader {
                         case pvr.VariableType.SignedByteNorm:
                         case pvr.VariableType.UnsignedByte:
                         case pvr.VariableType.SignedByte:
-                            eightcc.decompress_R8_G8(decData, encData, width, height);
+                            eightcc.decompress_R8_G8(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'la  88  ': // L8 A8
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm:
-                            eightcc.decompress_L8_A8(decData, encData, width, height);
+                            eightcc.decompress_L8_A8(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'rg  @@  ': // R16 G16
                     switch (channelType) {
                         case pvr.VariableType.SignedFloat:
-                            eightcc.decompress_R16_G16_Float(decData, encData, width, height);
+                            eightcc.decompress_R16_G16_Float(dec, enc, width, height);
                             break;
                         case pvr.VariableType.UnsignedShort:
                         case pvr.VariableType.SignedShort:
-                            eightcc.decompress_R16_G16(decData, encData, width, height);
+                            eightcc.decompress_R16_G16(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'rg  PP  ': // R32 G32
                     switch (channelType) {
                         case pvr.VariableType.SignedFloat:
-                            eightcc.decompress_R32_G32_Float(decData, encData, width, height);
+                            eightcc.decompress_R32_G32_Float(dec, enc, width, height);
                             break;
                         case pvr.VariableType.UnsignedInteger:
                         case pvr.VariableType.SignedInteger:
-                            eightcc.decompress_R32_G32(decData, encData, width, height);
+                            eightcc.decompress_R32_G32(dec, enc, width, height);
                             break;
                     }
                     break;
@@ -254,43 +254,43 @@ export default class PVRLoader {
                         case pvr.VariableType.SignedByteNorm:
                         case pvr.VariableType.UnsignedByte:
                         case pvr.VariableType.SignedByte:
-                            eightcc.decompress_R8(decData, encData, width, height);
+                            eightcc.decompress_R8(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'a   8   ': // A8
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm:
-                            eightcc.decompress_A8(decData, encData, width, height);
+                            eightcc.decompress_A8(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'l   8   ': // L8
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm:
-                            eightcc.decompress_L8(decData, encData, width, height);
+                            eightcc.decompress_L8(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'r   @   ': // R16
                     switch (channelType) {
                         case pvr.VariableType.SignedFloat:
-                            eightcc.decompress_R16_Float(decData, encData, width, height);
+                            eightcc.decompress_R16_Float(dec, enc, width, height);
                             break;
                         case pvr.VariableType.UnsignedShort:
                         case pvr.VariableType.SignedShort:
-                            eightcc.decompress_R16(decData, encData, width, height);
+                            eightcc.decompress_R16(dec, enc, width, height);
                             break;
                     }
                     break;
                 case 'r   P   ': // R32
                     switch (channelType) {
                         case pvr.VariableType.SignedFloat:
-                            eightcc.decompress_R32_Float(decData, encData, width, height);
+                            eightcc.decompress_R32_Float(dec, enc, width, height);
                             break;
                         case pvr.VariableType.UnsignedInteger:
                         case pvr.VariableType.SignedInteger:
-                            eightcc.decompress_R32(decData, encData, width, height);
+                            eightcc.decompress_R32(dec, enc, width, height);
                             break;
                     }
                     break;
@@ -300,90 +300,90 @@ export default class PVRLoader {
                 case pvr.PixelFormat.PVRTCI_2bpp_RGB:
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm: // srgb
-                            pvrtc.decompress_PVRTC(decData, encData, width, height, true, false);
+                            pvrtc.decompress_PVRTC(dec, enc, width, height, true, false);
                             break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCI_2bpp_RGBA:
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm: // srgb
-                            pvrtc.decompress_PVRTC(decData, encData, width, height, true, true);
+                            pvrtc.decompress_PVRTC(dec, enc, width, height, true, true);
                             break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCI_4bpp_RGB:
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm: // srgb
-                            pvrtc.decompress_PVRTC(decData, encData, width, height, false, false);
+                            pvrtc.decompress_PVRTC(dec, enc, width, height, false, false);
                             break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCI_4bpp_RGBA:
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm: // srgb
-                            pvrtc.decompress_PVRTC(decData, encData, width, height, false, true);
+                            pvrtc.decompress_PVRTC(dec, enc, width, height, false, true);
                             break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCII_2bpp:
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm: // srgb
-                            pvrtc.decompress_PVRTC2(decData, encData, width, height, true);
+                            pvrtc.decompress_PVRTC2(dec, enc, width, height, true);
                             break;
                     }
                     break;
                 case pvr.PixelFormat.PVRTCII_4bpp:
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm: // srgb
-                            pvrtc.decompress_PVRTC2(decData, encData, width, height, false);
+                            pvrtc.decompress_PVRTC2(dec, enc, width, height, false);
                             break;
                     }
                     break;
                 case pvr.PixelFormat.ETC1:
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm:
-                            etc.decompress_ETC2_RGB(decData, encData, width, height);
+                            etc.decompress_ETC2_RGB(dec, enc, width, height);
                             break;
                     }
                     break;
                 case pvr.PixelFormat.ETC2_RGB:
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm: // srgb
-                            etc.decompress_ETC2_RGB(decData, encData, width, height);
+                            etc.decompress_ETC2_RGB(dec, enc, width, height);
                             break;
                     }
                     break;
                 case pvr.PixelFormat.ETC2_RGBA:
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm: // srgb
-                            etc.decompress_ETC2_RGBA(decData, encData, width, height);
+                            etc.decompress_ETC2_RGBA(dec, enc, width, height);
                             break;
                     }
                     break;
                 case pvr.PixelFormat.ETC2_RGB_A1:
                     switch (channelType) {
                         case pvr.VariableType.UnsignedByteNorm: // srgb
-                            etc.decompress_ETC2_RGB_A1(decData, encData, width, height);
+                            etc.decompress_ETC2_RGB_A1(dec, enc, width, height);
                             break;
                     }
                     break;
                 case pvr.PixelFormat.EAC_R11:
                     switch (channelType) {
                         case pvr.VariableType.UnsignedShortNorm:
-                            etc.decompress_EAC_R11(decData, encData, width, height, false);
+                            etc.decompress_EAC_R11(dec, enc, width, height, false);
                             break;
                         case pvr.VariableType.SignedShortNorm:
-                            etc.decompress_EAC_R11(decData, encData, width, height, true);
+                            etc.decompress_EAC_R11(dec, enc, width, height, true);
                             break;
                     }
                     break;
                 case pvr.PixelFormat.EAC_RG11:
                     switch (channelType) {
                         case pvr.VariableType.UnsignedIntegerNorm:
-                            etc.decompress_EAC_RG11(decData, encData, width, height, false);
+                            etc.decompress_EAC_RG11(dec, enc, width, height, false);
                             break;
                         case pvr.VariableType.SignedIntegerNorm:
-                            etc.decompress_EAC_RG11(decData, encData, width, height, true);
+                            etc.decompress_EAC_RG11(dec, enc, width, height, true);
                             break;
                     }
                     break;
@@ -438,7 +438,7 @@ export default class PVRLoader {
                     for (let x = 0; x < width; x++) {
                         const i = (y * width + x) * 4;
                         for (let c = 0; c < 3; c++) {
-                            decData[i + c] = floatToByte(linearToSrgb(decData[i + c] / 255.0));
+                            dec[i + c] = floatToByte(linearToSrgb(dec[i + c] / 255.0));
                         }
                     }
                 }
@@ -450,11 +450,11 @@ export default class PVRLoader {
                 width: width, 
                 height: height,
                 channels: 4,
-                premultiplied: this._premultiplied
+                premultiplied: premultiplied
             }
         };
 
-        const image = sharp(decData, options);
+        const image = sharp(dec, options);
     
         return await image
             .flip(flipY)
