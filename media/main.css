@@ -1,12 +1,25 @@
+html {
+    box-sizing: border-box;
+}
+
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+
 div.main {
-	user-select: none;
+    /* disable highlighting */
+    user-select: none;
 }
 
 img.preview {
-	padding: 8px;
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	margin-right: -50%;
-	transform: translate(-50%, -50%);
+    /* so the image doesn't go up to the edge of the editor panel */
+    padding: 8px;
+
+    /* center horizontally and vertically */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }

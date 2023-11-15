@@ -59,8 +59,6 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
 
     private _generateHtmlForWebview(webview: vscode.Webview, imgData: string): string {
         // convert local path of project files to a uri we can use in the webview
-        const styleResetUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'reset.css'));
-        const styleVSCodeUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'vscode.css'));
         const styleMainUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', 'main.css'));
 
         return `<!DOCTYPE html>
@@ -69,12 +67,10 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <meta charset="UTF-8">
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src * data:; style-src ${webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="${styleResetUri}" rel="stylesheet">
-    <link href="${styleVSCodeUri}" rel="stylesheet">
     <link href="${styleMainUri}" rel="stylesheet">
 </head>
 <body>
-    <div class="main" data-vscode-context='{"webviewSection": "main", "preventDefaultContextMenuItems": true}'><img class="preview" src="data:image/png;base64,${imgData}"></div>
+    <div class="main" data-vscode-context='{"webviewSection": "main", "preventDefaultContextMenuItems": true}'><img class="preview" draggable="false" src="data:image/png;base64,${imgData}"></div>
 </body>
 </html>`;
     }

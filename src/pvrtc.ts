@@ -601,7 +601,7 @@ function pvrtcDecompress(pDecompressedData: Uint8Array, pCompressedData: DataVie
     }
 }
 
-export function decompressSurface(pResultImage: Uint8Array, pCompressedData: DataView, width: int, height: int, do2bitMode: boolean): void
+export function decompressSurface(pResultImage: Uint8Array, pCompressedData: DataView, width: int, height: int, do2bitMode: boolean, hasAlpha: boolean): void
 {
     // Cast the output buffer to a Pixel32 pointer.
     let pDecompressedData = pResultImage;
@@ -623,22 +623,26 @@ export function decompressSurface(pResultImage: Uint8Array, pCompressedData: Dat
         // Loop through all the required pixels.
         for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
+                const dst = (x + y * width) * 4;
+                const src = (x + y * trueWidth) * 4;
                 for (let c = 0; c < 4; c++) {
-                    pResultImage[(x + y * width) * 4 + c] = pDecompressedData[(x + y * trueWidth) * 4 + c];
+                    if (c !== 3 || hasAlpha) {
+                        pResultImage[dst + c] = pDecompressedData[src + c];
+                    }
                 }
             }
         }
     }
 }
 
-export function decompress_PVRTC(pResultImage: Uint8Array, pCompressedData: DataView, width: int, height: int, do2bitMode: boolean): void
+export function decompress_PVRTC(pResultImage: Uint8Array, pCompressedData: DataView, width: int, height: int, do2bitMode: boolean, hasAlpha: boolean): void
 {
     PVRTC2_Mode = false;
-    decompressSurface(pResultImage, pCompressedData, width, height, do2bitMode);
+    decompressSurface(pResultImage, pCompressedData, width, height, do2bitMode, hasAlpha);
 }
 
 export function decompress_PVRTC2(pResultImage: Uint8Array, pCompressedData: DataView, width: int, height: int, do2bitMode: boolean): void
 {
     PVRTC2_Mode = true;
-    decompressSurface(pResultImage, pCompressedData, width, height, do2bitMode);
+    decompressSurface(pResultImage, pCompressedData, width, height, do2bitMode, true);
 }

@@ -67,36 +67,35 @@ ASTC
 * ASTC 6x6x5
 * ASTC 6x6x6
 
+Uncompressed
+
+* ✅ R8 G8 B8 A8 (SNorm, UInt, SInt)
+* ✅ R8 G8 B8 (SNorm, UInt, SInt)
+* ✅ R8 G8 (SNorm, UInt, SInt)
+* ✅ R8 (SNorm, UInt, SInt)
+* ✅ R10 G10 B10 A2 (UInt)
+* ✅ B8 G8 R8 A8
+* ✅ R4 G4 B4 A4
+* ✅ R5 G5 B5 A1
+* ✅ R5 G6 B5
+* ✅ L8 A8
+* ✅ L8
+* ✅ A8
+* ✅ R32 G32 B32 A32 (Float, SInt)
+* ✅ R32 G32 B32 (Float, SInt)
+* ✅ R32 G32 (Float, SInt)
+* ✅ R32 (Float, SInt)
+* ✅ R16 G16 B16 A16 (Float, SInt)
+* ✅ R16 G16 B16 (Float, SInt)
+* ✅ R16 G16 (Float, SInt)
+* ✅ R16 (Float, SInt)
+* B10 G11 R11 (UFloat)
+
 Exponential
 
 * Shared Exponent RGB999 E5
 * RGBM
 * RGBD
-
-Uncompressed
-
-* R8 G8 B8 A8
-* R10 G10 B10 A2
-* R4 G4 B4 A4
-* R5 G5 B5 A1
-* B8 G8 R8 A8
-* R16 G16 B16 A16
-* R32 G32 B32 A32
-* R8 G8 B8
-* R5 G6 B5
-* R32 G32 B32
-* B10 G11 R11
-* R8 G8
-* L8 A8
-* R16 G16 B16
-* R16 G16
-* R32 G32
-* R8
-* A8
-* L8
-* R16
-* R32
-* R16 G16 B16
 
 ## Release Notes
 
@@ -105,5 +104,3 @@ Not much supported yet, but could still be useful to people. Just wanted to get 
 ### 0.1.0
 
 Initial release.
-
----
