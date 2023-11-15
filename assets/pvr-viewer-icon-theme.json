@@ -1,10 +1,10 @@
 {
     "iconDefinitions": {
         "_image": {
-            "iconPath": "./image-dark.svg"
+            "iconPath": "./pvr-dark.svg"
         },
         "_image_light": {
-            "iconPath": "./image-light.svg"
+            "iconPath": "./pvr-light.svg"
         }
     },
     "fileExtensions": {

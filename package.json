@@ -4,6 +4,7 @@
   "description": "Image preview for PVR texture files",
   "version": "0.2.1",
   "publisher": "davidsun",
+  "author": "David Sun",
   "repository": {
     "type": "git",
     "url": "https://github.com/davidlsun/vscode-pvr-viewer"
@@ -26,7 +27,7 @@
     "dxt",
     "etc"
   ],
-  "icon": "./icons/package.png",
+  "icon": "./assets/icon.png",
   "main": "./dist/main.js",
   "contributes": {
     "customEditors": [
@@ -44,7 +45,7 @@
       {
         "id": "pvr-viewer",
         "label": "PVR Viewer",
-        "path": "./icons/pvr-viewer-icon-theme.json"
+        "path": "./assets/pvr-viewer-icon-theme.json"
       }
     ]
   },
