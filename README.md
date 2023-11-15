@@ -4,8 +4,10 @@ Extension for Visual Studio Code that adds image preview for PVR (.pvr) texture 
 
 ## Features
 
-* Adds icon for .pvr files
-* Linear textures are converted to sRGB colorspace for display
+* Includes file icon theme for .pvr files.
+* Linear textures are converted to sRGB colorspace for display.
+* No zooming or other user control in the viewer.
+* No support for viewing cubemaps, mipmaps, 3D textures.
 
 ## Texture Formats
 
@@ -95,10 +97,6 @@ Uncompressed
 * R16
 * R32
 * R16 G16 B16
-
-## Known Issues
-
-PVRTC2 has very small artifacts.
 
 ## Release Notes
 

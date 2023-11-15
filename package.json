@@ -14,8 +14,19 @@
     "vscode": "^1.84.0"
   },
   "categories": [
+    "Visualization",
     "Other"
   ],
+  "keywords": [
+    "texture",
+    "viewer",
+    "pvr",
+    "pvrtc",
+    "astc",
+    "dxt",
+    "etc"
+  ],
+  "icon": "./icons/package.png",
   "main": "./out/extension.js",
   "contributes": {
     "customEditors": [
@@ -38,7 +49,11 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node --packages=external",
+    "esbuild": "npm run esbuild-base -- --sourcemap",
+    "esbuild-watch": "npm run esbuild-base -- --sourcemap --watch",
+    "test-compile": "tsc -p ./",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
@@ -52,6 +67,7 @@
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
     "@vscode/test-electron": "^2.3.6",
+    "esbuild": "^0.19.5",
     "eslint": "^8.52.0",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
