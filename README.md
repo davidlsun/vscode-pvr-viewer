@@ -19,7 +19,7 @@ PVRTC
 * ✅ PVRTC 2bpp RGBA
 * ✅ PVRTC 4bpp RGB
 * ✅ PVRTC 4bpp RGBA
-* PVRTC2 2bpp
+* ✅ PVRTC2 2bpp
 * ✅ PVRTC2 4bpp
 * PVRTC HDR 6bpp
 * PVRTC HDR 8bpp

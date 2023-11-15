@@ -382,7 +382,7 @@ function pvrtcGetDecompressedPixels(P: PVRTCWord, Q: PVRTCWord, R: PVRTCWord, S:
 
             if (hardFlag) {
                 const mode = modulationModes[x + wordWidth / 2][y + wordHeight / 2];
-                if (mode === 0) {
+                if (do2bitMode || mode === 0) {
                     // non-interpolated
                     const weight = getModulationValues(modulationValues, modulationModes, x + wordWidth / 2, y + wordHeight / 2, do2bitMode);
                     const nearestWord: PVRTCWord = (y < wordHeight / 2) ?
