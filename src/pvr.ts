@@ -1,18 +1,4 @@
-/*!****************************************************************************
-
- @file         PVRTexLibDefines.h
- @copyright    Copyright (c) Imagination Technologies Limited.
- @brief        Public PVRTexLib defines header.
-
-******************************************************************************/
-
 // Texture related constants and enumerations.
-
-// V3 Header Identifiers.
-export const PVRTEX3_IDENT = 0x03525650; // 'P''V''R'3
-
-// PVR Header file flags. Condition if true. If false, opposite is true unless specified.
-export const PVRTEX3_PREMULTIPLIED = (1 << 1); // Texture has been premultiplied by alpha value.
 
 // Values for each meta data type that PVRTexLib knows about.
 // Texture arrays hinge on each surface being identical in all
@@ -52,8 +38,8 @@ export enum Orientation
     In = 0
 }
 
-// Describes the colour space of the texture
-export enum ColourSpace
+// Describes the color space of the texture
+export enum ColorSpace
 {
     Linear = 0,
     sRGB,
@@ -262,5 +248,3 @@ export enum VariableType
 
     Invalid = 255
 }
-
-export const HEADER_SIZE = 52;

@@ -21,18 +21,26 @@
   "keywords": [
     "texture",
     "viewer",
+    "preview",
+    "image",
+    "powervr",
     "pvr",
     "pvrtc",
     "astc",
     "dxt",
-    "etc"
+    "etc2",
+    "opengl",
+    "gles"
   ],
+  "galleryBanner": {
+    "color": "#bde0fc"
+  },
   "icon": "./assets/icon.png",
   "main": "./out/extension.js",
   "contributes": {
     "customEditors": [
       {
-        "viewType": "pvr-viewer",
+        "viewType": "pvr.preview",
         "displayName": "Image Preview",
         "selector": [
           {
@@ -43,9 +51,9 @@
     ],
     "iconThemes": [
       {
-        "id": "pvr-viewer",
-        "label": "PVR Viewer",
-        "path": "./assets/pvr-viewer-icon-theme.json"
+        "id": "pvr-files",
+        "label": "PVR Files",
+        "path": "./assets/pvr-files-icon-theme.json"
       }
     ]
   },
@@ -73,8 +81,5 @@
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
     "typescript": "^5.2.2"
-  },
-  "dependencies": {
-    "sharp": "^0.32.6"
   }
 }

@@ -3,24 +3,30 @@
 (function () {
     const vscode = acquireVsCodeApi();
 
-    function loadImage(buffer) {
-        //vscode.postMessage({ command: 'info', text: `buffer length: ${buffer.byteLength}` });
-        const image = document.getElementById('preview-image');
-        image.src = window.URL.createObjectURL(new Blob([buffer]));
+    const div = document.getElementById('preview-container');
+    /*
+    div.dataset.vscodeContext = {
+        webviewSection: 'main',
+        preventDefaultContextMenuItems: true
+    };
+    */
 
-        const container = document.getElementById('preview-container');
+    function loadImage(buffer, width, height) {
+        //vscode.postMessage({ command: 'info', text: `buffer length: ${buffer.byteLength}, (${width} x ${height})` });
+        const imageData = new ImageData(new Uint8ClampedArray(buffer), width, height);
         const canvas = document.getElementById('preview-canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').putImageData(imageData, 0, 0);
     }
 
     // handle messages sent from the extension to the webview
     window.addEventListener('message', event => {
         const message = event.data;
-        console.log("*** message event ***");
-        console.log(message);
         switch (message.command) {
             case 'load':
                 // convert raw byte array to typed data array for loading into data view
-                loadImage(message.buffer);
+                loadImage(message.buffer, message.width, message.height);
                 break;
         }
     });

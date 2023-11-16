@@ -1,0 +1,18 @@
+{
+    "iconDefinitions": {
+        "_file": {
+            "iconPath": "./file-dark.svg"
+        },
+        "_file_light": {
+            "iconPath": "./file-light.svg"
+        }
+    },
+    "fileExtensions": {
+        "pvr": "_file"
+    },
+    "light": {
+        "fileExtensions": {
+            "pvr": "_file_light"
+        }
+    }
+}

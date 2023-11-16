@@ -1,20 +1,26 @@
 import * as vscode from 'vscode';
-import PVRLoader from './loader';
+import PVRParser from './parser';
 
 class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDocument {
 
     public readonly uri: vscode.Uri;
-    public readonly bitmap: Uint8Array;
+    public readonly buffer: ArrayBuffer;
+    public readonly width: number;
+    public readonly height: number;
 
     public static async create(uri: vscode.Uri): Promise<ImagePreviewDocument> {
-        const bitmap = await PVRLoader.readFile(uri);
-        return new ImagePreviewDocument(uri, bitmap);
+        const data = await vscode.workspace.fs.readFile(uri);
+        const parser = new PVRParser(data);
+        const buffer = await parser.decompress(data, 0, 0, 0, 0);
+        return new ImagePreviewDocument(uri, buffer, parser.width, parser.height);
     }
 
-    private constructor(uri: vscode.Uri, bitmap: Uint8Array) {
+    private constructor(uri: vscode.Uri, buffer: ArrayBuffer, width: number, height: number) {
         super(() => { });
         this.uri = uri;
-        this.bitmap = bitmap;
+        this.buffer = buffer;
+        this.width = width;
+        this.height = height;
     }
 
     public dispose(): void {
@@ -23,7 +29,7 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
 
 export default class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider<ImagePreviewDocument> {
 
-    private static readonly viewType = 'pvr-viewer';
+    private static readonly viewType = 'pvr.preview';
 
     public static register(context: vscode.ExtensionContext): vscode.Disposable {
         return vscode.window.registerCustomEditorProvider(
@@ -42,16 +48,16 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     }
 
     public async resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
+        // convert local path of project files to a uri we can use in the webview
+        const mediaUri = vscode.Uri.joinPath(this._context.extensionUri, 'media');
+        const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'preview.css'));
+        const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'preview.js'));
+
         // use a content security policy to only allow loading styles from our extension directory
         panel.webview.options = {
             enableScripts: true,
-            localResourceRoots: [this._context.extensionUri]
+            localResourceRoots: [mediaUri]
         };
-
-        // convert local path of project files to a uri we can use in the webview
-        const mediaUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media'));
-        const styleSrc = vscode.Uri.joinPath(mediaUri, 'viewer.css');
-        const scriptSrc = vscode.Uri.joinPath(mediaUri, 'viewer.js');
 
         // setup initial content in new webview
         panel.webview.html = `<!DOCTYPE html>
@@ -61,13 +67,10 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src ${panel.webview.cspSource}; script-src ${panel.webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="${styleSrc}" rel="stylesheet">
+    <script src="${scriptSrc}"></script>
 </head>
 <body>
-    <div id="preview-container" data-vscode-context='{"preventDefaultContextMenuItems":true}'>
-        <canvas id="preview-canvas"></canvas>
-        <img id="preview-image" draggable="false">
-    </div>
-    <script src="${scriptSrc}"></script>
+    <div id="preview-container"><canvas id="preview-canvas"></canvas></div>
 </body>
 </html>`;
 
@@ -85,13 +88,12 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
                         vscode.window.showErrorMessage(message.text);
                         break;
                     case 'ready':
-                        let bitmap = document.bitmap;
-                        if (bitmap) {
-                            if (bitmap.byteOffset > 0 || bitmap.byteLength < bitmap.buffer.byteLength) {
-                                bitmap = bitmap.slice(bitmap.byteOffset, bitmap.byteOffset + bitmap.byteLength);
-                            }
-                            panel.webview.postMessage({ command: 'load', buffer: bitmap.buffer });
-                        }
+                        panel.webview.postMessage({
+                            command: 'load',
+                            buffer: document.buffer,
+                            width: document.width,
+                            height: document.height
+                        });
                         break;
                 }
             },

@@ -33,8 +33,6 @@ type PVRTCWordIndices =
 
 let PVRTC2_Mode = false;
 
-const SATURATE = (x: int): uint8 => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
-
 function getColorA(colorData: uint32): Pixel32
 {
     const opacityFlag = colorData & (PVRTC2_Mode ? (1 << 31) : (1 << 15));
@@ -330,7 +328,8 @@ function getModulationValues(modulationValues: Int32Array[], modulationModes: In
     }
 }
 
-const convertToPixel32 = (c: Int32Array): Uint8Array => new Uint8Array([SATURATE(c[0]), SATURATE(c[1]), SATURATE(c[2]), SATURATE(c[3])]);
+const saturate = (x: int): uint8 => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
+const convertToPixel32 = (c: Int32Array): Uint8Array => new Uint8Array([saturate(c[0]), saturate(c[1]), saturate(c[2]), saturate(c[3])]);
 
 // color lookup [Pa, Pb, Qa, Qb, Ra, Rb, Sa, Sb, (5Pa+3Pb)/8, (3Pa+5Pb)/8]
 const paletteLookup = [

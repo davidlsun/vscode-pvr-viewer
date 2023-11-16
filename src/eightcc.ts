@@ -5,9 +5,8 @@ type float = number;
 
 const RGB_for_A8 = 255; // technically, sampling A8 textures should return black RGB, but this makes them harder to see
 
-const SATURATE = (x: int): int => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
-
-const floatToByte = (f: float): int => SATURATE(Math.round(f * 255.0));
+const saturate = (x: int): int => ((x < 0) ? 0 : ((x > 255) ? 255 : x));
+const floatToByte = (f: float): int => saturate(Math.round(f * 255.0));
 
 export function decompress_R8_G8_B8_A8(dec: Uint8Array, enc: DataView, width: int, height: int): void {
     for (let y = 0; y < height; y++) {
