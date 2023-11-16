@@ -39,7 +39,7 @@ export default class PVRLoader {
     public get width(): int { return this._width; }
     public get height(): int { return this._height; }
 
-    public static async readFile(uri: vscode.Uri): Promise<Buffer> {
+    public static async readFile(uri: vscode.Uri): Promise<Uint8Array> {
         const data = await vscode.workspace.fs.readFile(uri);
         const loader = new PVRLoader();
         return loader.parse(data);
@@ -48,7 +48,7 @@ export default class PVRLoader {
     private constructor() {
     }
 
-    public async parse(data: Uint8Array): Promise<Buffer> {
+    public async parse(data: Uint8Array): Promise<Uint8Array> {
         if (data.length < pvr.HEADER_SIZE) { throw new Error(); }
 
         // read fixed size header block

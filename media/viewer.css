@@ -17,7 +17,7 @@ html {
     padding: 0;
 }
 
-img.preview {
+#preview-image {
     /* so the image doesn't go up to the edge of the editor panel */
     padding: 8px;
 

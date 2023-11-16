@@ -1,33 +1,26 @@
-// this script will be run within the webview itself,
-// and cannot access the main vscode APIs directly.
-
-// get this once only and save it for later use
-const vscode = acquireVsCodeApi();
-
-function handleUpdate(message) {
-    console.log('handle message');
-    console.log(message);
-    vscode.postMessage({ command: 'warn', text: 'lkasdfjklasjkldflkjasdf' });
-}
-
-function loadImage(buffer) {
-    vscode.postMessage({ command: 'info', text: `data size in bytes: ${buffer.byteLength}` });
-    const container = document.getElementById('preview-container');
-    const canvas = document.getElementById('preview-canvas');
-}
-
+// this script will run within the webview itself
+// and cannot access the main vscode apis directly
 (function () {
+    const vscode = acquireVsCodeApi();
+
+    function loadImage(buffer) {
+        //vscode.postMessage({ command: 'info', text: `buffer length: ${buffer.byteLength}` });
+        const image = document.getElementById('preview-image');
+        image.src = window.URL.createObjectURL(new Blob([buffer]));
+
+        const container = document.getElementById('preview-container');
+        const canvas = document.getElementById('preview-canvas');
+    }
+
     // handle messages sent from the extension to the webview
     window.addEventListener('message', event => {
         const message = event.data;
+        console.log("*** message event ***");
+        console.log(message);
         switch (message.command) {
-            case 'update':
-                handleUpdate(message);
-                break;
             case 'load':
                 // convert raw byte array to typed data array for loading into data view
-                const buffer = message.image;
-                loadImage(buffer);
+                loadImage(message.buffer);
                 break;
         }
     });
