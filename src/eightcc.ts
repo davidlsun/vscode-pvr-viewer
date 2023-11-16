@@ -446,3 +446,20 @@ export function decompress_B10_G11_R11_UFloat(dec: Uint8Array, enc: DataView, wi
         }
     }
 }
+
+export function decompress_RGBM(dec: Uint8Array, enc: DataView, width: int, height: int, maxRange: float): void {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const dst = (y * width + x) * 4;
+            const src = (y * width + x) * 4;
+            const r = enc.getUint8(src + 0) / 255.0;
+            const g = enc.getUint8(src + 1) / 255.0;
+            const b = enc.getUint8(src + 2) / 255.0;
+            const m = enc.getUint8(src + 3) / 255.0;
+            dec[dst + 0] = floatToByte(r * m * maxRange);
+            dec[dst + 1] = floatToByte(g * m * maxRange);
+            dec[dst + 2] = floatToByte(b * m * maxRange);
+            dec[dst + 3] = 255;
+        }
+    }
+}

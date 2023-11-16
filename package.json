@@ -2,7 +2,7 @@
   "name": "pvr-viewer",
   "displayName": "PVR Viewer",
   "description": "Image preview for PVR texture files",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "davidsun",
   "author": "David Sun",
   "license": "Apache-2.0",

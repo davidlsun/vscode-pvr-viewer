@@ -92,7 +92,7 @@ Uncompressed
 * ✅ R16
 * B10 G11 R11
 * R9 G9 B9 E5
-* RGBM
+* ✅ RGBM
 * RGBD
 
 ## Release Notes

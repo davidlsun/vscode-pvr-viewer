@@ -55,6 +55,7 @@ export default class PVRParser {
     public readonly channelType: pvr.VariableType;
     public readonly premultiplied: boolean;
     public readonly orientation: pvr.Orientation[/*3*/];
+    public readonly maxRange: float;
 
     public get flipX(): boolean { return (this.orientation[pvr.Axis.X] !== pvr.Orientation.Right); }
     public get flipY(): boolean { return (this.orientation[pvr.Axis.Y] !== pvr.Orientation.Down); }
@@ -92,6 +93,7 @@ export default class PVRParser {
         this._dataOffset = HeaderSize + metaDataSize;
 
         this.orientation = [pvr.Orientation.Right, pvr.Orientation.Down, pvr.Orientation.In];
+        this.maxRange = 6.0;
 
         // read all metadata entries
         let metaView = new DataView(data.buffer, data.byteOffset + HeaderSize, metaDataSize);
@@ -104,20 +106,27 @@ export default class PVRParser {
             if (metaDataSize - pos < metaLen) { break; }
             switch (semantic) {
                 case pvr.MetaData.TextureOrientation:
-                    this.orientation[pvr.Axis.X] = metaView.getUint8(pos + 0);
-                    this.orientation[pvr.Axis.Y] = metaView.getUint8(pos + 1);
-                    this.orientation[pvr.Axis.Z] = metaView.getUint8(pos + 2);
+                    if (metaLen === 3) {
+                        this.orientation[pvr.Axis.X] = metaView.getUint8(pos + 0);
+                        this.orientation[pvr.Axis.Y] = metaView.getUint8(pos + 1);
+                        this.orientation[pvr.Axis.Z] = metaView.getUint8(pos + 2);
+                    }
                     break;
                 case pvr.MetaData.PerChannelType:
                     console.log(`PerChannelType: ${metaLen} bytes`);
                     for (let i = 0; i < metaLen; i++) {
-                        console.log(`${i}: ${metaView.getUint8(pos + i)}`);
+                        //console.log(`${i}: ${metaView.getUint8(pos + i)}`);
                     }
                     break;
                 case pvr.MetaData.BorderData:
                     console.log(`BorderData: ${metaLen} bytes`);
                     for (let i = 0; i < metaLen; i++) {
-                        console.log(`${i}: ${metaView.getUint8(pos + i)}`);
+                        //console.log(`${i}: ${metaView.getUint8(pos + i)}`);
+                    }
+                    break;
+                case pvr.MetaData.MaxRange:
+                    if (metaLen === 4) {
+                        this.maxRange = metaView.getFloat32(pos + 0, true);
                     }
                     break;
                 default:
@@ -458,7 +467,7 @@ export default class PVRParser {
                 case pvr.PixelFormat.RGBM:
                     switch (this.channelType) {
                         case pvr.VariableType.UnsignedByteNorm:
-                            // ...
+                            eightcc.decompress_RGBM(dec, enc, width, height, this.maxRange);
                             break;
                     }
                     break;
