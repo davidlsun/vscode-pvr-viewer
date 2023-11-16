@@ -4,37 +4,56 @@ import PVRLoader from './loader';
 class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDocument {
 
     public readonly uri: vscode.Uri;
-
-    private _bitmap: Uint8Array | undefined;
+    public readonly bitmap: Uint8Array;
 
     public static async create(uri: vscode.Uri): Promise<ImagePreviewDocument> {
-        return new ImagePreviewDocument(uri);
+        const bitmap = await PVRLoader.readFile(uri);
+        return new ImagePreviewDocument(uri, bitmap);
     }
 
-    private constructor(uri: vscode.Uri) {
+    private constructor(uri: vscode.Uri, bitmap: Uint8Array) {
         super(() => { });
         this.uri = uri;
+        this.bitmap = bitmap;
     }
 
     public dispose(): void {
     }
+}
 
-    public async initPanel(panel: vscode.WebviewPanel, context: vscode.ExtensionContext): Promise<void> {
-        // convert texture to png and write to disk so webview can read from disk
-        this._bitmap = await PVRLoader.readFile(this.uri);
+export default class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider<ImagePreviewDocument> {
 
+    private static readonly viewType = 'pvr-viewer';
+
+    public static register(context: vscode.ExtensionContext): vscode.Disposable {
+        return vscode.window.registerCustomEditorProvider(
+            ImagePreviewProvider.viewType,
+            new ImagePreviewProvider(context),
+            {
+                webviewOptions: { retainContextWhenHidden: false },
+                supportsMultipleEditorsPerDocument: false
+            });
+    }
+
+    private constructor(private readonly _context: vscode.ExtensionContext) { }
+
+    public async openCustomDocument(uri: vscode.Uri, _openContext: vscode.CustomDocumentOpenContext, _token: vscode.CancellationToken): Promise<ImagePreviewDocument> {
+        return await ImagePreviewDocument.create(uri);
+    }
+
+    public async resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
         // use a content security policy to only allow loading styles from our extension directory
         panel.webview.options = {
             enableScripts: true,
-            localResourceRoots: [context.extensionUri]
+            localResourceRoots: [this._context.extensionUri]
         };
 
         // use a nonce to only allow a specific script to be run
         const nonce = getNonce();
 
         // convert local path of project files to a uri we can use in the webview
-        const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'viewer.css'));
-        const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'viewer.js'));
+        const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'viewer.css'));
+        const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'viewer.js'));
 
         // setup initial content in new webview
         panel.webview.html = `<!DOCTYPE html>
@@ -68,7 +87,7 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
                         vscode.window.showErrorMessage(message.text);
                         break;
                     case 'ready':
-                        let bitmap = this._bitmap;
+                        let bitmap = document.bitmap;
                         if (bitmap) {
                             if (bitmap.byteOffset > 0 || bitmap.byteLength < bitmap.buffer.byteLength) {
                                 bitmap = bitmap.slice(bitmap.byteOffset, bitmap.byteOffset + bitmap.byteLength);
@@ -79,32 +98,7 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
                 }
             },
             undefined,
-            context.subscriptions);
-    }
-}
-
-export default class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider<ImagePreviewDocument> {
-
-    private static readonly viewType = 'pvr-viewer';
-
-    public static register(context: vscode.ExtensionContext): vscode.Disposable {
-        return vscode.window.registerCustomEditorProvider(
-            ImagePreviewProvider.viewType,
-            new ImagePreviewProvider(context),
-            {
-                webviewOptions: { retainContextWhenHidden: false },
-                supportsMultipleEditorsPerDocument: false
-            });
-    }
-
-    private constructor(private readonly _context: vscode.ExtensionContext) { }
-
-    public async openCustomDocument(uri: vscode.Uri, _openContext: vscode.CustomDocumentOpenContext, _token: vscode.CancellationToken): Promise<ImagePreviewDocument> {
-        return await ImagePreviewDocument.create(uri);
-    }
-
-    public async resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
-        document.initPanel(panel, this._context);
+            this._context.subscriptions);
     }
 }
 
