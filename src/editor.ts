@@ -9,15 +9,16 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
     public readonly height: number;
     public readonly flipX: boolean;
     public readonly flipY: boolean;
+    public readonly premultiplied: boolean;
 
     public static async create(uri: vscode.Uri): Promise<ImagePreviewDocument> {
         const data = await vscode.workspace.fs.readFile(uri);
         const parser = new PVRParser(data);
-        const buffer = await parser.decompress(0, 0, 0, 0);
-        return new ImagePreviewDocument(uri, buffer, parser.width, parser.height, parser.flipX, parser.flipY);
+        const buffer = await parser.decompress(0, 0, 0, 0, false);
+        return new ImagePreviewDocument(uri, buffer, parser.width, parser.height, parser.flipX, parser.flipY, parser.premultiplied);
     }
 
-    private constructor(uri: vscode.Uri, buffer: ArrayBuffer, width: number, height: number, flipX: boolean, flipY: boolean) {
+    private constructor(uri: vscode.Uri, buffer: ArrayBuffer, width: number, height: number, flipX: boolean, flipY: boolean, premultiplied: boolean) {
         super(() => { });
         this.uri = uri;
         this.buffer = buffer;
@@ -25,6 +26,7 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
         this.height = height;
         this.flipX = flipX;
         this.flipY = flipY;
+        this.premultiplied = premultiplied;
     }
 
     public dispose(): void {
@@ -33,7 +35,7 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
 
 export default class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider<ImagePreviewDocument> {
 
-    private static readonly viewType = 'pvr.preview';
+    private static readonly viewType = 'pvr.view';
 
     public static register(context: vscode.ExtensionContext): vscode.Disposable {
         return vscode.window.registerCustomEditorProvider(
@@ -98,7 +100,8 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
                             width: document.width,
                             height: document.height,
                             flipX: document.flipX,
-                            flipY: document.flipY
+                            flipY: document.flipY,
+                            premultiplied: document.premultiplied
                         });
                         break;
                 }

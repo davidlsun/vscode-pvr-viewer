@@ -48,7 +48,7 @@
   "contributes": {
     "customEditors": [
       {
-        "viewType": "pvr.preview",
+        "viewType": "pvr.view",
         "displayName": "Image Preview",
         "selector": [
           {
@@ -75,9 +75,11 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
+    "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.3",
     "@types/node": "18.x",
     "@types/vscode": "^1.84.0",
+    "@types/vscode-webview": "^1.57.4",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
     "@vscode/test-electron": "^2.3.6",
@@ -87,5 +89,8 @@
     "mocha": "^10.2.0",
     "rimraf": "^5.0.5",
     "typescript": "^5.2.2"
+  },
+  "dependencies": {
+    "@vscode/webview-ui-toolkit": "^1.3.1"
   }
 }

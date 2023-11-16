@@ -10,24 +10,29 @@
         preventDefaultContextMenuItems: true
     });
 
-    function loadImage(buffer, width, height, flipX, flipY) {
-        // blit the rgba32 buffer directly into a canvas
-        const imageData = new ImageData(new Uint8ClampedArray(buffer), width, height);
+    function loadImage(buffer, width, height, flipX, flipY, premultiplied) {
+        // replace the canvas with our RGBA32 buffer
+        const imageData = new ImageData(new Uint8ClampedArray(buffer), width, height, {
+            colorSpace: 'srgb'
+        });
+        createImageBitmap(imageData, {
+            imageOrientation: flipY ? 'flipY' : 'none',
+            premultiplyAlpha: !premultiplied ? 'premultiply' : 'none',
+            colorSpaceConversion: 'default'
+        }).then(imageBitmap => {
+            const canvas = document.getElementById('preview-canvas');
+            canvas.width = width;
+            canvas.height = height;
 
-        const canvas = document.getElementById('preview-canvas');
-        canvas.width = width;
-        canvas.height = height;
+            // replace the canvas with the buffer
+            const ctx = canvas.getContext('bitmaprenderer');
+            ctx.transferFromImageBitmap(imageBitmap);
 
-        const ctx = canvas.getContext('2d');
-        ctx.putImageData(imageData, 0, 0);
-
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-
-        // handle orientation metadata specified in the container format
-        canvas.classList.add('flip-reset');
-        if (flipX) { canvas.classList.add('flip-x'); }
-        if (flipY) { canvas.classList.add('flip-y'); }
+            // needing to flip x is rare
+            if (flipX) {
+                canvas.classList.add('flip-x');
+            }
+        });
     }
 
     // handle messages sent from the extension to the webview
@@ -36,7 +41,7 @@
         switch (message.command) {
             case 'load':
                 // convert raw byte array to typed data array for loading into data view
-                loadImage(message.buffer, message.width, message.height, message.flipX, message.flipY);
+                loadImage(message.buffer, message.width, message.height, message.flipX, message.flipY, message.premultiplied);
                 break;
         }
     });
