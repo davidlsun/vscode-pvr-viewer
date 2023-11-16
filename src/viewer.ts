@@ -48,19 +48,17 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
             localResourceRoots: [this._context.extensionUri]
         };
 
-        // use a nonce to only allow a specific script to be run
-        const nonce = getNonce();
-
         // convert local path of project files to a uri we can use in the webview
-        const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'viewer.css'));
-        const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'viewer.js'));
+        const mediaUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media'));
+        const styleSrc = vscode.Uri.joinPath(mediaUri, 'viewer.css');
+        const scriptSrc = vscode.Uri.joinPath(mediaUri, 'viewer.js');
 
         // setup initial content in new webview
         panel.webview.html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src * blob:; style-src ${panel.webview.cspSource}; script-src 'nonce-${nonce}';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src ${panel.webview.cspSource}; script-src ${panel.webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="${styleSrc}" rel="stylesheet">
 </head>
@@ -69,7 +67,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
         <canvas id="preview-canvas"></canvas>
         <img id="preview-image" draggable="false">
     </div>
-    <script nonce="${nonce}" src="${scriptSrc}"></script>
+    <script src="${scriptSrc}"></script>
 </body>
 </html>`;
 
@@ -100,13 +98,4 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
             undefined,
             this._context.subscriptions);
     }
-}
-
-function getNonce(): string {
-    let text = '';
-    const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    for (let i = 0; i < 32; i++) {
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-    }
-    return text;
 }
