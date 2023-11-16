@@ -56,6 +56,10 @@ export default class PVRParser {
     public readonly premultiplied: boolean;
     public readonly orientation: pvr.Orientation[/*3*/];
 
+    public get flipX(): boolean { return (this.orientation[pvr.Axis.X] !== pvr.Orientation.Right); }
+    public get flipY(): boolean { return (this.orientation[pvr.Axis.Y] !== pvr.Orientation.Down); }
+    public get flipZ(): boolean { return (this.orientation[pvr.Axis.Z] !== pvr.Orientation.In); }
+
     public constructor(data: Uint8Array) {
         this._data = data;
 
@@ -90,7 +94,7 @@ export default class PVRParser {
         this.orientation = [pvr.Orientation.Right, pvr.Orientation.Down, pvr.Orientation.In];
 
         // read all metadata entries
-        let metaView = new DataView(data.buffer, data.byteOffset + HeaderSize);
+        let metaView = new DataView(data.buffer, data.byteOffset + HeaderSize, metaDataSize);
         for (let pos = 0; pos < metaDataSize; ) {
             if (metaDataSize - pos < 12) { break; }
             const creator = metaView.getUint32(pos + 0, true);
@@ -100,19 +104,31 @@ export default class PVRParser {
             if (metaDataSize - pos < metaLen) { break; }
             switch (semantic) {
                 case pvr.MetaData.TextureOrientation:
-                    this.orientation[pvr.Axis.X] = metaView.getUint8(0);
-                    this.orientation[pvr.Axis.Y] = metaView.getUint8(1);
-                    this.orientation[pvr.Axis.Z] = metaView.getUint8(2);
+                    this.orientation[pvr.Axis.X] = metaView.getUint8(pos + 0);
+                    this.orientation[pvr.Axis.Y] = metaView.getUint8(pos + 1);
+                    this.orientation[pvr.Axis.Z] = metaView.getUint8(pos + 2);
+                    break;
+                case pvr.MetaData.PerChannelType:
+                    console.log(`PerChannelType: ${metaLen} bytes`);
+                    for (let i = 0; i < metaLen; i++) {
+                        console.log(`${i}: ${metaView.getUint8(pos + i)}`);
+                    }
+                    break;
+                case pvr.MetaData.BorderData:
+                    console.log(`BorderData: ${metaLen} bytes`);
+                    for (let i = 0; i < metaLen; i++) {
+                        console.log(`${i}: ${metaView.getUint8(pos + i)}`);
+                    }
                     break;
                 default:
-                    console.log(`unknown semantic ${semantic}`);
+                    console.log(`pvr-viewer: unknown semantic ${semantic}`);
                     break;
             }
             pos += metaLen;
         }
     }
 
-    public async decompress(data: Uint8Array, zdepth: int, surface: int, face: int, mip: int): Promise<ArrayBuffer> {
+    public async decompress(_zdepth: int, _surface: int, _face: int, _mip: int): Promise<ArrayBuffer> {
         const width = this.width;
         const height = this.height;
 
@@ -121,7 +137,7 @@ export default class PVRParser {
         const dec = new Uint8Array(output);
 
         // select the right texture plane data (depth, surface, face, mip)
-        const enc = new DataView(data.buffer, data.byteOffset + this._dataOffset);
+        const enc = new DataView(this._data.buffer, this._data.byteOffset + this._dataOffset);
 
         // if pixel format is set to an invalid value, we are in eightcc mode
         if (this.pixelFormat === pvr.PixelFormat.NumCompressedPFs) {
@@ -225,6 +241,7 @@ export default class PVRParser {
                             eightcc.decompress_R32_G32_B32(dec, enc, width, height);
                             break;
                     }
+                    break;
                 case 'bgr :;; ': // B10 G11 R11
                     switch (this.channelType) {
                         case pvr.VariableType.UnsignedFloat:
@@ -455,15 +472,19 @@ export default class PVRParser {
             }
         }
 
+        // color space conversation not yet handled
         if (false) {
             if (this.colorSpace === pvr.ColorSpace.Linear) {
                 linearToSrgb(dec, width, height);
             }
         }
 
-        // flip not handled here nor there
-        // premultiplied alpha not handled here nor there
-        // icc color profile  not handled here nor there
+        // premultiplied alpha not yet handled
+        if (this.premultiplied) {
+            console.log(`premultiplied: true`);
+        }
+
+        // icc color profile not yet handled
         return output;
     }
 }

@@ -1,7 +1,7 @@
 .vscode/**
 .vscode-test/**
 node_modules/**
-out/**
+out/test/**
 src/**
 .gitignore
 .yarnrc

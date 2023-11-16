@@ -7,20 +7,24 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
     public readonly buffer: ArrayBuffer;
     public readonly width: number;
     public readonly height: number;
+    public readonly flipX: boolean;
+    public readonly flipY: boolean;
 
     public static async create(uri: vscode.Uri): Promise<ImagePreviewDocument> {
         const data = await vscode.workspace.fs.readFile(uri);
         const parser = new PVRParser(data);
-        const buffer = await parser.decompress(data, 0, 0, 0, 0);
-        return new ImagePreviewDocument(uri, buffer, parser.width, parser.height);
+        const buffer = await parser.decompress(0, 0, 0, 0);
+        return new ImagePreviewDocument(uri, buffer, parser.width, parser.height, parser.flipX, parser.flipY);
     }
 
-    private constructor(uri: vscode.Uri, buffer: ArrayBuffer, width: number, height: number) {
+    private constructor(uri: vscode.Uri, buffer: ArrayBuffer, width: number, height: number, flipX: boolean, flipY: boolean) {
         super(() => { });
         this.uri = uri;
         this.buffer = buffer;
         this.width = width;
         this.height = height;
+        this.flipX = flipX;
+        this.flipY = flipY;
     }
 
     public dispose(): void {
@@ -67,10 +71,10 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src ${panel.webview.cspSource}; script-src ${panel.webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="${styleSrc}" rel="stylesheet">
-    <script src="${scriptSrc}"></script>
 </head>
 <body>
     <div id="preview-container"><canvas id="preview-canvas"></canvas></div>
+    <script src="${scriptSrc}"></script>
 </body>
 </html>`;
 
@@ -92,7 +96,9 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
                             command: 'load',
                             buffer: document.buffer,
                             width: document.width,
-                            height: document.height
+                            height: document.height,
+                            flipX: document.flipX,
+                            flipY: document.flipY
                         });
                         break;
                 }
