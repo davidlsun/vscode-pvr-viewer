@@ -8,9 +8,13 @@ html {
     box-sizing: inherit;
 }
 
-div.main {
+#preview-container {
     /* disable highlighting */
     user-select: none;
+}
+
+#preview-canvas {
+    padding: 0;
 }
 
 img.preview {

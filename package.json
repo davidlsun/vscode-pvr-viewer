@@ -28,7 +28,7 @@
     "etc"
   ],
   "icon": "./assets/icon.png",
-  "main": "./dist/main.js",
+  "main": "./out/extension.js",
   "contributes": {
     "customEditors": [
       {
