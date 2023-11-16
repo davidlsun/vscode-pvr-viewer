@@ -1,20 +1,21 @@
 # PVR Viewer
 
-Extension for Visual Studio Code that adds image preview for PVR (.pvr) texture files. All texture decompression is written in JavaScript, so it works with any graphics card.
+Extension for Visual Studio Code that adds image preview for PVR (.pvr) texture files. All texture decompression is written in JavaScript, so any format will work on any graphics card.
 
 ## Features
 
-* Includes file icon theme for .pvr files.
-* No zooming or other user control in the viewer.
-* No support for viewing cubemaps, mipmaps, arrays, 3D textures.
+* Large textures are scaled down to fit the window.
+* Textures with premultiplied alpha are shown correctly.
 * Linear textures not converted to sRGB colorspace for display.
+* No zooming or other user control of the viewer.
+* No support for viewing cubemaps, mipmaps, arrays, 3D textures.
 * Floating point textures have no exposure control for display.
 
 ## Texture Formats
 
 Initial goal is to support all formats required by OpenGL ES 3.2, listed below:
 
-PVRTC
+### PVRTC
 
 * ✅ PVRTC 2bpp RGB
 * ✅ PVRTC 2bpp RGBA
@@ -27,7 +28,7 @@ PVRTC
 * PVRTC2 HDR 6bpp
 * PVRTC2 HDR 8bpp
 
-ETC
+### ETC
 
 * ✅ ETC1
 * ✅ ETC2 RGB
@@ -36,12 +37,12 @@ ETC
 * ✅ EAC R11
 * ✅ EAC RG11
 
-BC
+### BC
 
 * BC4
 * BC5
 
-ASTC
+### ASTC
 
 * ASTC 4x4
 * ASTC 5x4
@@ -68,7 +69,7 @@ ASTC
 * ASTC 6x6x5
 * ASTC 6x6x6
 
-Uncompressed
+### Uncompressed
 
 * ✅ R8 G8 B8 A8
 * ✅ R8 G8 B8

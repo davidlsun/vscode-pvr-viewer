@@ -1,53 +1,38 @@
-// This function converts a Float16 stored as the bits of a Uint16 into a Javascript Number.
-// Adapted from: https://gist.github.com/mfirmin/456e1c6dcf7b0e1bda6e940add32adad
-// Adapted from: https://gist.github.com/martinkallman/5049614
-// input is a Uint16 (eg, new Uint16Array([value])[0])
-
 type uint16 = number;
 type float = number;
 
-// Create a 32 bit DataView to store the input
+// used to reinterpret 32-bit values
 const _dv = new DataView(new ArrayBuffer(4));
 
-function convertToFloat(input: uint16): float {
-    // Set the Float16 into the last 16 bits of the dataview
-    // So our dataView is [00xx]
-    _dv.setUint16(2, input, false);
+export function expandFloat16(f16: uint16): float {
+    // convert S1 E5 M10 to S1 E8 M23
+    const sign = f16 & (1 << 15);
+    const rest = f16 & ((1 << 15) - 1);
+    const exp = f16 & (((1 << 5) - 1) << 10);
+    let f32 = exp === 0 ? 0 : (rest << 13) + (112 << 23);
+    f32 |= sign << 16;
 
-    // Get all 32 bits as a 32 bit integer
-    // (JS bitwise operations are performed on 32 bit signed integers)
-    const asInt32 = _dv.getInt32(0, false);
-
-    // All bits aside from the sign
-    let rest = asInt32 & 0x7fff;
-    // Sign bit
-    let sign = asInt32 & 0x8000;
-    // Exponent bits
-    const exponent = asInt32 & 0x7c00;
-
-    // Shift the non-sign bits into place for a 32 bit Float
-    rest <<= 13;
-    // Shift the sign bit into place for a 32 bit Float
-    sign <<= 16;
-
-    // Adjust bias
-    // https://en.wikipedia.org/wiki/Half-precision_floating-point_format#Exponent_encoding
-    rest += 0x38000000;
-    // Denormals-as-zero
-    rest = (exponent === 0 ? 0 : rest);
-    // Re-insert sign bit
-    rest |= sign;
-
-    // Set the adjusted float32 (stored as int32) back into the dataview
-    _dv.setInt32(0, rest, false);
-
-    // Get it back out as a float32 (which js will convert to a Number)
-    const asFloat32 = _dv.getFloat32(0, false);
-
-    return asFloat32;
+    // reinterpret the bits as a float
+    _dv.setInt32(0, f32, true);
+    return _dv.getFloat32(0, true);
 }
 
-export function getFloat16(dataview: DataView, byteOffset: number, littleEndian?: boolean): number
-{
-    return convertToFloat(dataview.getUint16(byteOffset, littleEndian));
+export function expandFloat11(f11: uint16): float {
+    // convert S0 E5 M6 to S1 E8 M23
+    const exp = f11 & (((1 << 5) - 1) << 6);
+    const f32 = exp === 0 ? 0 : (f11 << 17) + (112 << 23);
+
+    // reinterpret the bits as a float
+    _dv.setInt32(0, f32, true);
+    return _dv.getFloat32(0, true);
+}
+
+export function expandFloat10(f10: uint16): float {
+    // convert S0 E5 M5 to S1 E8 M23
+    const exp = f10 & (((1 << 5) - 1) << 5);
+    const f32 = exp === 0 ? 0 : (f10 << 18) + (112 << 23);
+
+    // reinterpret the bits as a float
+    _dv.setInt32(0, f32, true);
+    return _dv.getFloat32(0, true);
 }
