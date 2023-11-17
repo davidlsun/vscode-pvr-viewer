@@ -1,4 +1,4 @@
-import { expandFloat16, expandFloat11, expandFloat10 } from './float16';
+import { expandFloat16, expandFloat11, expandFloat10 } from './utils/float16';
 
 type int = number;
 type float = number;

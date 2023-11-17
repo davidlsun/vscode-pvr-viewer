@@ -11,36 +11,36 @@ function main() {
     window.addEventListener('message', event => {
         const message = event.data;
         switch (message.command) {
-            case 'load':
+            case 'preview':
                 // convert raw byte array to typed data array for loading into data view
-                loadImage(message.buffer, message.width, message.height, message.flipX, message.flipY, message.premultiplied);
+                handlePreviewCommand(message.buffer, message.width, message.height, message.flipX, message.flipY, message.premultiplied);
                 break;
         }
     });
 
     // inform vscode we are ready to receive messages
     vscode.postMessage({ command: 'ready' });
-
-    // right clicking anywhere in the editor does nothing
-    const div = document.getElementById('preview-container') as HTMLDivElement;
-    div.dataset.vscodeContext = JSON.stringify({
-        webviewSection: 'main',
-        preventDefaultContextMenuItems: true
-    });
-
+    /*
+        // right clicking anywhere in the editor does nothing
+        const div = document.getElementById('preview-container') as HTMLDivElement;
+        div.dataset.vscodeContext = JSON.stringify({
+            webviewSection: 'main',
+            preventDefaultContextMenuItems: true
+        });
+    */
     // setup our test button
     const howdyButton = document.getElementById('howdy') as Button;
-    howdyButton?.addEventListener('click', handleHowdyClick);
+    howdyButton.addEventListener('click', handleHowdyClick);
 }
 
 function handleHowdyClick() {
     vscode.postMessage({
-        command: 'hello',
+        command: 'info',
         text: 'hey there pardner!🕺'
     });
 }
 
-function loadImage(buffer: ArrayBuffer, width: number, height: number, flipX: boolean, flipY: boolean, premultiplied: boolean) {
+function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number, flipX: boolean, flipY: boolean, premultiplied: boolean) {
     // replace the canvas with our RGBA32 buffer
     const imageData = new ImageData(new Uint8ClampedArray(buffer), width, height, {
         colorSpace: 'srgb'

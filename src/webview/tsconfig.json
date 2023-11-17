@@ -1,12 +1,15 @@
 {
     "compilerOptions": {
-        "target": "es2022",
-        "module": "node16",
+        "composite": true,
+        "target": "es6",
+        "module": "esnext",
+        "moduleResolution": "node",
         "lib": [
-            "es2022"
+            "es6",
+            "dom"
         ],
-        "outDir": "out",
-        "rootDir": "src",
+        "outDir": "../../out",
+        "rootDir": ".",
         // strict type-checking options
         "strict": true,
         "noImplicitAny": true,
@@ -14,20 +17,9 @@
         "noImplicitThis": true,
         "alwaysStrict": true,
         // additional checks
-        "noUnusedLocals": false,
+        "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true
-    },
-    "include": [
-        "src"
-    ],
-    "exclude": [
-        "src/webview"
-    ],
-    "references": [
-        {
-            "path": "src/webview"
-        }
-    ]
+    }
 }

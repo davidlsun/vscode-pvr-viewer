@@ -18,7 +18,7 @@ html {
     overflow: auto;
 
     /* disable highlighting */
-    user-select: none;
+    /*user-select: none;*/
 }
 
 #preview-canvas {

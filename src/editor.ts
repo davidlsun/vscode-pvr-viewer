@@ -56,7 +56,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     public async resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
         // convert local path of project files to a uri we can use in the webview
         const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'out', 'webview.js'));
-        const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'preview.css'));
+        const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'assets', 'preview.css'));
 
         // use a content security policy to only allow loading styles from our extension directory
         panel.webview.options = {
@@ -74,13 +74,14 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; font-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src ${webview.cspSource};">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="${styleSrc}" rel="stylesheet">
 </head>
 <body>
-    <vscode-button id="howdy">Howdy!</vscode-button>
     <div id="preview-container"><canvas id="preview-canvas"></canvas></div>
+    <vscode-button id="howdy">Howdy partner!</vscode-button>
+    <vscode-button id="howdy2">This is a button!</vscode-button>
     <script type="module" src="${scriptSrc}"></script>
 </body>
 </html>`;
@@ -102,7 +103,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
                         break;
                     case 'ready':
                         webview.postMessage({
-                            command: 'load',
+                            command: 'preview',
                             buffer: document.buffer,
                             width: document.width,
                             height: document.height,
