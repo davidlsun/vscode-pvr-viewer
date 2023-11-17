@@ -79,10 +79,10 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <link href="${styleSrc}" rel="stylesheet">
 </head>
 <body>
-    <div id="preview-container"><canvas id="preview-canvas"></canvas></div>
+    <div id="__preview-container"><canvas id="preview-canvas"></canvas></div>
     <vscode-button id="howdy">Howdy partner!</vscode-button>
     <vscode-button id="howdy2">This is a button!</vscode-button>
-    <script type="module" src="${scriptSrc}"></script>
+    <script src="${scriptSrc}"></script>
 </body>
 </html>`;
     }
