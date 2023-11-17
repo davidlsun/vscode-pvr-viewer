@@ -433,15 +433,15 @@ export function decompress_R32(dec: Uint8Array, enc: DataView, width: int, heigh
     }
 }
 
-export function decompress_B10_G11_R11_UFloat(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+export function decompress_R11_G11_B10_UFloat(dec: Uint8Array, enc: DataView, width: int, height: int): void {
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const dst = (y * width + x) * 4;
             const src = (y * width + x) * 4;
             const dword = enc.getUint32(src, true);
-            const b = expandFloat10((dword >> 22) & 0x3ff);
-            const g = expandFloat11((dword >> 11) & 0x7ff);
             const r = expandFloat11((dword >> 0) & 0x7ff);
+            const g = expandFloat11((dword >> 11) & 0x7ff);
+            const b = expandFloat10((dword >> 22) & 0x3ff);
             dec[dst + 0] = floatToByte(r);
             dec[dst + 1] = floatToByte(g);
             dec[dst + 2] = floatToByte(b);
@@ -450,7 +450,7 @@ export function decompress_B10_G11_R11_UFloat(dec: Uint8Array, enc: DataView, wi
     }
 }
 
-export function decompress_RGB9_E5(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+export function decompress_RGB9_E5_UFloat(dec: Uint8Array, enc: DataView, width: int, height: int): void {
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const dst = (y * width + x) * 4;
@@ -469,7 +469,7 @@ export function decompress_RGB9_E5(dec: Uint8Array, enc: DataView, width: int, h
     }
 }
 
-export function decompress_RGBM(dec: Uint8Array, enc: DataView, width: int, height: int, maxRange: float): void {
+export function decompress_RGBM_UFloat(dec: Uint8Array, enc: DataView, width: int, height: int, maxRange: float): void {
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const dst = (y * width + x) * 4;

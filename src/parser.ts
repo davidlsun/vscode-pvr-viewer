@@ -253,7 +253,7 @@ export default class PVRParser {
                 case 'bgr :;; ': // B10 G11 R11
                     switch (this.channelType) {
                         case pvr.VariableType.UnsignedFloat:
-                            eightcc.decompress_B10_G11_R11_UFloat(dec, enc, width, height);
+                            eightcc.decompress_R11_G11_B10_UFloat(dec, enc, width, height);
                             break;
                     }
                     break;
@@ -466,14 +466,14 @@ export default class PVRParser {
                 case pvr.PixelFormat.SharedExponentR9G9B9E5:
                     switch (this.channelType) {
                         case pvr.VariableType.UnsignedIntegerNorm:
-                            eightcc.decompress_RGB9_E5(dec, enc, width, height);
+                            eightcc.decompress_RGB9_E5_UFloat(dec, enc, width, height);
                             break;
                     }
                     break;
                 case pvr.PixelFormat.RGBM:
                     switch (this.channelType) {
                         case pvr.VariableType.UnsignedByteNorm:
-                            eightcc.decompress_RGBM(dec, enc, width, height, this.maxRange);
+                            eightcc.decompress_RGBM_UFloat(dec, enc, width, height, this.maxRange);
                             break;
                     }
                     break;
