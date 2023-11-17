@@ -55,33 +55,40 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
 
     public async resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
         // convert local path of project files to a uri we can use in the webview
-        const mediaUri = vscode.Uri.joinPath(this._context.extensionUri, 'media');
-        const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'preview.css'));
-        const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'preview.js'));
+        const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'out', 'webview.js'));
+        const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'preview.css'));
 
         // use a content security policy to only allow loading styles from our extension directory
         panel.webview.options = {
             enableScripts: true,
-            localResourceRoots: [mediaUri]
+            localResourceRoots: [this._context.extensionUri]
         };
 
         // setup initial content in new webview
-        panel.webview.html = `<!DOCTYPE html>
+        panel.webview.html = this._getWebviewContent(panel.webview, scriptSrc, styleSrc);
+        this._setWebviewMessageListener(panel.webview, document);
+    }
+
+    private _getWebviewContent(webview: vscode.Webview, scriptSrc: vscode.Uri, styleSrc: vscode.Uri): string {
+        return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src ${panel.webview.cspSource}; script-src ${panel.webview.cspSource};">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; font-src ${webview.cspSource}; style-src ${webview.cspSource}; script-src ${webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="${styleSrc}" rel="stylesheet">
 </head>
 <body>
+    <vscode-button id="howdy">Howdy!</vscode-button>
     <div id="preview-container"><canvas id="preview-canvas"></canvas></div>
-    <script src="${scriptSrc}"></script>
+    <script type="module" src="${scriptSrc}"></script>
 </body>
 </html>`;
+    }
 
-        // handle messages from webview
-        panel.webview.onDidReceiveMessage(
+    private _setWebviewMessageListener(webview: vscode.Webview, document: ImagePreviewDocument): void {
+        // handle messages posted by webview, coming to us in the editor
+        webview.onDidReceiveMessage(
             message => {
                 switch (message.command) {
                     case 'info':
@@ -94,7 +101,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
                         vscode.window.showErrorMessage(message.text);
                         break;
                     case 'ready':
-                        panel.webview.postMessage({
+                        webview.postMessage({
                             command: 'load',
                             buffer: document.buffer,
                             width: document.width,
