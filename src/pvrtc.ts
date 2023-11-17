@@ -1,10 +1,7 @@
-/*!
-\brief Implementation of the Texture Decompression functions.
-\file PVRCore/texture/PVRTDecompress.cpp
-\author PowerVR by Imagination, Developer Technology Team
-\copyright Copyright (c) Imagination Technologies Limited.
-*/
-//!\cond NO_DOXYGEN
+// Implementation of the Texture Decompression functions.
+// PVRCore/texture/PVRTDecompress.cpp
+// PowerVR by Imagination, Developer Technology Team
+// Copyright (c) Imagination Technologies Limited.
 
 type uint8 = number;
 type int = number;
