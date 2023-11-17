@@ -463,6 +463,13 @@ export default class PVRParser {
                             break;
                     }
                     break;
+                case pvr.PixelFormat.SharedExponentR9G9B9E5:
+                    switch (this.channelType) {
+                        case pvr.VariableType.UnsignedIntegerNorm:
+                            eightcc.decompress_RGB9_E5(dec, enc, width, height);
+                            break;
+                    }
+                    break;
                 case pvr.PixelFormat.RGBM:
                     switch (this.channelType) {
                         case pvr.VariableType.UnsignedByteNorm:

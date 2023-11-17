@@ -91,15 +91,11 @@ Initial goal is to support all formats required by OpenGL ES 3.2, listed below:
 * ✅ R16 G16 B16
 * ✅ R16 G16
 * ✅ R16
-* B10 G11 R11
-* R9 G9 B9 E5
+* ✅ R11 G11 B10
+* ✅ RGB9 E5
 * ✅ RGBM
 * RGBD
 
 ## Release Notes
 
 Not much supported yet, but could still be useful to people. Just wanted to get something out there.
-
-### 0.1.0
-
-Initial release.

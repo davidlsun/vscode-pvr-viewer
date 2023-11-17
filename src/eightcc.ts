@@ -450,6 +450,25 @@ export function decompress_B10_G11_R11_UFloat(dec: Uint8Array, enc: DataView, wi
     }
 }
 
+export function decompress_RGB9_E5(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const dst = (y * width + x) * 4;
+            const src = (y * width + x) * 4;
+            const dword = enc.getUint32(src, true);
+            const r = (dword >> 0) & 0x1ff;
+            const g = (dword >> 9) & 0x1ff;
+            const b = (dword >> 18) & 0x1ff;
+            const e = (dword >> 27) & 0x1f;
+            const scale = Math.pow(2, e - 24);
+            dec[dst + 0] = floatToByte(r * scale);
+            dec[dst + 1] = floatToByte(g * scale);
+            dec[dst + 2] = floatToByte(b * scale);
+            dec[dst + 3] = 255;
+        }
+    }
+}
+
 export function decompress_RGBM(dec: Uint8Array, enc: DataView, width: int, height: int, maxRange: float): void {
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
