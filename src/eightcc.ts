@@ -451,6 +451,10 @@ export function decompress_R11_G11_B10_UFloat(dec: Uint8Array, enc: DataView, wi
 }
 
 export function decompress_RGB9_E5_UFloat(dec: Uint8Array, enc: DataView, width: int, height: int): void {
+    const lookupTable = new Array(32);
+    for (let e = 0; e < 31; e++) {
+        lookupTable[e] = Math.pow(2, e - 24);
+    }
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
             const dst = (y * width + x) * 4;
@@ -460,7 +464,7 @@ export function decompress_RGB9_E5_UFloat(dec: Uint8Array, enc: DataView, width:
             const g = (dword >> 9) & 0x1ff;
             const b = (dword >> 18) & 0x1ff;
             const e = (dword >> 27) & 0x1f;
-            const scale = Math.pow(2, e - 24);
+            const scale = lookupTable[e];
             dec[dst + 0] = floatToByte(r * scale);
             dec[dst + 1] = floatToByte(g * scale);
             dec[dst + 2] = floatToByte(b * scale);
