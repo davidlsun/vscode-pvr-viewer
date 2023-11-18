@@ -1,5 +1,9 @@
 import * as vscode from 'vscode';
-import PVRParser from './parser';
+import PVRParser from './containers/parser';
+
+function loadConfig(): void {
+    const config = vscode.workspace.getConfiguration('pvrViewer');
+}
 
 class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDocument {
 
@@ -123,14 +127,12 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <link href="${styleSrc}" rel="stylesheet">
     <link href="${iconsSrc}" rel="stylesheet">
 </head>
-<body>^
+<body>
     <vscode-progress-ring id="preview-progress"></vscode-progress-ring>
     <div id="preview-grid">
         <div id="preview-controls">
-            <vscode-button id="howdy">Howdy partner!</vscode-button>
-            <vscode-checkbox id="hello" checked>Hello</vscode-checkbox>
             <div class="dropdown-container">
-                <label for="colorspace">Color Space:</label>
+                <label for="colorspace">Color Space</label>
                 <vscode-dropdown id="colorspace">
                     <span slot="indicator" class="codicon codicon-color-mode"></span>
                     <vscode-option>Linear</vscode-option>
@@ -140,6 +142,13 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
                     <vscode-option>BT2020</vscode-option>
                 </vscode-dropdown>
             </div>
+            <div class="checkbox-container">
+                <vscode-checkbox id="channel-red">R</vscode-checkbox>
+                <vscode-checkbox id="channel-green">G</vscode-checkbox>
+                <vscode-checkbox id="channel-blue">B</vscode-checkbox>
+                <vscode-checkbox id="channel-alpha">A</vscode-checkbox>
+            </div>
+            <vscode-button id="info-button">Texture Info</vscode-button>
         </div>
         <div id="preview-container"><canvas id="preview-canvas"></canvas></div>
     </div>

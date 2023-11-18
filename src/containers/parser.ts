@@ -1,7 +1,7 @@
 import * as pvr from './pvr';
-import * as pvrtc from './pvrtc';
-import * as etc from './etc';
-import * as eightcc from './eightcc';
+import * as pvrtc from '../formats/pvrtc';
+import * as etc from '../formats/etc';
+import * as eightcc from '../formats/eightcc';
 
 type int = number;
 type float = number;

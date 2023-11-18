@@ -32,7 +32,6 @@ function main() {
         webviewSection: 'main',
         preventDefaultContextMenuItems: true
     });
-    */
 
     // setup our test button
     const howdyButton = document.getElementById('howdy') as Button;
@@ -43,17 +42,9 @@ function main() {
         });
     });
 
-    // setup our checkbox
-    const helloToggle = document.getElementById('hello') as Checkbox;
-    helloToggle.addEventListener('change', () => {
-        vscode.postMessage({
-            command: 'info',
-            text: 'checkbox toggled'
-        });
-    });
-
     // colorspace option changed
     const colorspaceInput = document.getElementById('colorspace') as Dropdown;
+    */
 }
 
 function setWindowMessageListener() {
