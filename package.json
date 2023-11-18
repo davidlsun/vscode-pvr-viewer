@@ -96,7 +96,6 @@
           "command": "pvrViewer.showTextureInfo",
           "when": "webviewId == 'pvr.view' && webviewSection == 'canvas'"
         }
-        
       ]
     },
     "commands": [

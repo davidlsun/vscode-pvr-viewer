@@ -5,6 +5,7 @@ import {
     vsCodeDropdown, Dropdown,
     vsCodeOption, Option,
     vsCodeTextField, TextField,
+    vsCodeDataGrid, vsCodeDataGridRow, vsCodeDataGridCell,
     vsCodeProgressRing, ProgressRing
 } from '@vscode/webview-ui-toolkit';
 
@@ -14,6 +15,9 @@ provideVSCodeDesignSystem().register(
     vsCodeDropdown(),
     vsCodeOption(),
     vsCodeTextField(),
+    vsCodeDataGrid(),
+    vsCodeDataGridRow(),
+    vsCodeDataGridCell(),
     vsCodeProgressRing(),
 );
 

@@ -60,7 +60,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     public resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): void {
         // convert local path of project files to a uri we can use in the webview
         const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'out', 'webview.js'));
-        const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'assets', 'preview.css'));
+        const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'preview.css'));
         const iconsSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css'));
 
         // use a content security policy to only allow loading styles from our extension directory
@@ -131,40 +131,94 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <vscode-progress-ring id="progress-spinner"></vscode-progress-ring>
     <div id="grid-container" data-vscode-context='{"webviewSection": "main", "preventDefaultContextMenuItems": true}'>
         <div id="canvas-wrapper"><canvas id="texture-canvas" data-vscode-context='{"webviewSection": "canvas", "preventDefaultContextMenuItems": true}'></canvas></div>
-        <div id="colorspace-control" class="dropdown-container">
-            <label for="colorspace">Color Space</label>
-            <vscode-dropdown id="colorspace">
-                <vscode-option>Linear</vscode-option>
-                <vscode-option>sRGB</vscode-option>
-                <vscode-option>BT601</vscode-option>
-                <vscode-option>BT709</vscode-option>
-                <vscode-option>BT2020</vscode-option>
-            </vscode-dropdown>
+        <div id="bottom-bar">
+            <div id="format-control">
+                <vscode-text-field id="pixel-format" value="R8 G8 B8 A8 UNorm" readonly>Pixel Format</vscode-text-field>
+            </div>
+            <div id="colorspace-control" class="dropdown-container">
+                <label for="colorspace">Color Space</label>
+                <vscode-dropdown id="colorspace">
+                    <vscode-option>Linear</vscode-option>
+                    <vscode-option>sRGB</vscode-option>
+                    <vscode-option>BT601</vscode-option>
+                    <vscode-option>BT709</vscode-option>
+                    <vscode-option>BT2020</vscode-option>
+                </vscode-dropdown>
+            </div>
+            <div id="miplevel-control" class="dropdown-container">
+                <label for="miplevel">Mip Level</label>
+                <vscode-dropdown id="miplevel">
+                    <vscode-option>0 : 1024 x 1024</vscode-option>
+                    <vscode-option>1 : 512 x 512</vscode-option>
+                    <vscode-option>2 : 256 x 256</vscode-option>
+                    <vscode-option>3 : 128 x 128</vscode-option>
+                    <vscode-option>4 : 64 x 64</vscode-option>
+                    <vscode-option>5 : 32 x 32</vscode-option>
+                    <vscode-option>6 : 16 x 16</vscode-option>
+                    <vscode-option>7 : 8 x 8</vscode-option>
+                    <vscode-option>8 : 4 x 4</vscode-option>
+                    <vscode-option>9 : 2 x 2</vscode-option>
+                    <vscode-option>10 : 1 x 1</vscode-option>
+                </vscode-dropdown>
+            </div>
+            <div id="channels-control" class="checkbox-container">
+                <vscode-checkbox id="channel-red">R</vscode-checkbox>
+                <vscode-checkbox id="channel-green">G</vscode-checkbox>
+                <vscode-checkbox id="channel-blue">B</vscode-checkbox>
+                <vscode-checkbox id="channel-alpha">A</vscode-checkbox>
+            </div>
         </div>
-        <div id="channels-control" class="checkbox-container">
-            <vscode-checkbox id="channel-red">R</vscode-checkbox>
-            <vscode-checkbox id="channel-green">G</vscode-checkbox>
-            <vscode-checkbox id="channel-blue">B</vscode-checkbox>
-            <vscode-checkbox id="channel-alpha">A</vscode-checkbox>
-        </div>
-        <div id="format-control">
-            <vscode-text-field id="pixel-format" value="R8 G8 B8 A8 UNorm" readonly>Pixel Format</vscode-text-field>
-        </div>
-        <div id="miplevel-control" class="dropdown-container">
-            <label for="miplevel">Mip Level</label>
-            <vscode-dropdown id="miplevel">
-                <vscode-option>0 : 1024 x 1024</vscode-option>
-                <vscode-option>1 : 512 x 512</vscode-option>
-                <vscode-option>2 : 256 x 256</vscode-option>
-                <vscode-option>3 : 128 x 128</vscode-option>
-                <vscode-option>4 : 64 x 64</vscode-option>
-                <vscode-option>5 : 32 x 32</vscode-option>
-                <vscode-option>6 : 16 x 16</vscode-option>
-                <vscode-option>7 : 8 x 8</vscode-option>
-                <vscode-option>8 : 4 x 4</vscode-option>
-                <vscode-option>9 : 2 x 2</vscode-option>
-                <vscode-option>10 : 1 x 1</vscode-option>
-            </vscode-dropdown>
+        <div id="side-panel">
+            <vscode-data-grid grid-template-columns="1fr 2fr">
+                <vscode-data-grid-row row-type="header">
+                    <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Key</vscode-data-grid-cell>
+                    <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Value</vscode-data-grid-cell>
+                </vscode-data-grid-row>
+                <vscode-data-grid-row>
+                    <vscode-data-grid-cell grid-column="1">Width</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="2">1024</vscode-data-grid-cell>
+                </vscode-data-grid-row>
+                <vscode-data-grid-row>
+                    <vscode-data-grid-cell grid-column="1">Height</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="2">512</vscode-data-grid-cell>
+                </vscode-data-grid-row>
+                <vscode-data-grid-row>
+                    <vscode-data-grid-cell grid-column="1">Depth</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="2">1</vscode-data-grid-cell>
+                </vscode-data-grid-row>
+                <vscode-data-grid-row>
+                    <vscode-data-grid-cell grid-column="1">Pixel Format</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="2">R32 G32 B32</vscode-data-grid-cell>
+                </vscode-data-grid-row>
+                <vscode-data-grid-row>
+                    <vscode-data-grid-cell grid-column="1">Channel Type</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="2">Signed Floating Point</vscode-data-grid-cell>
+                </vscode-data-grid-row>
+                <vscode-data-grid-row>
+                    <vscode-data-grid-cell grid-column="1">Color Space</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="2">Linear</vscode-data-grid-cell>
+                </vscode-data-grid-row>
+                <vscode-data-grid-row>
+                    <vscode-data-grid-cell grid-column="1">Mip Levels</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="2">11</vscode-data-grid-cell>
+                </vscode-data-grid-row>
+                <vscode-data-grid-row>
+                    <vscode-data-grid-cell grid-column="1">Face</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="2">1</vscode-data-grid-cell>
+                </vscode-data-grid-row>
+                <vscode-data-grid-row>
+                    <vscode-data-grid-cell grid-column="1">Array Surfaces</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="2">1</vscode-data-grid-cell>
+                </vscode-data-grid-row>
+                <vscode-data-grid-row>
+                    <vscode-data-grid-cell grid-column="1">Data Size</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="2">8.0 MiB</vscode-data-grid-cell>
+                </vscode-data-grid-row>
+                <vscode-data-grid-row>
+                    <vscode-data-grid-cell grid-column="1">Orientation</vscode-data-grid-cell>
+                    <vscode-data-grid-cell grid-column="2">+X +Y +Z</vscode-data-grid-cell>
+                </vscode-data-grid-row>
+            </vscode-data-grid>
         </div>
     </div>
     <script src="${scriptSrc}"></script>

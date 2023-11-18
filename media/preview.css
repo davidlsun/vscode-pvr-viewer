@@ -29,17 +29,17 @@ body {
     width: 100vw;
     height: 100vh;
 
-    /* 8x2 grid */
+    /* 6x3 grid */
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    grid-template-rows: auto 50px 10px;
+    grid-template-columns: 1fr 300px;
+    grid-template-rows: 1fr 80px;
     grid-column-gap: 0;
     grid-row-gap: 0;
 }
 
 #canvas-wrapper {
-    /* entire top row of the grid */
-    grid-area: 1 / 1 / 2 / 6;
+    /* upper left majority of screen */
+    grid-area: 1 / 1 / 2 / 2;
 
     /* allow cell to shrink below content size */
     min-height: 0;
@@ -65,47 +65,56 @@ body {
     scale: -1 1;
 }
 
-#colorspace-control {
-    /* first cell from the left on the bottom row */
+#bottom-bar {
+    /* docked on the bottom*/
     grid-area: 2 / 1 / 3 / 2;
-    justify-self: center;
-    align-self: center;
-}
-
-#colorspace {
-    width: 150px;
-}
-
-#channels-control {
-    grid-area: 2 / 2 / 3 / 3;
-    justify-self: center;
-    align-self: center;
+    display: flex;
+    justify-content: space-around;
+    margin: 8px;
 }
 
 #format-control {
-    grid-area: 2 / 3 / 3 / 4;
     justify-self: center;
     align-self: center;
 }
 
 #pixel-format {
-    width: 200px;
+    min-width: 150px;
+}
+
+#colorspace-control {
+    /* first cell from the left on the bottom row */
+    justify-self: center;
+    align-self: center;
+}
+
+#colorspace {
+    min-width: 150px;
+}
+
+#channels-control {
+    justify-self: center;
+    align-self: center;
 }
 
 #miplevel-control {
-    grid-area: 2 / 4 / 3 / 5;
     justify-self: center;
     align-self: center;
 }
 
 #miplevel {
-    width: 150px;
+    min-width: 150px;
 }
 
-#fifth-control {
-    grid-area: 2 / 5 / 3 / 6;
-    justify-self: center;
-    align-self: center;
+#side-panel {
+    /* docked on the right */
+    grid-area: 1 / 2 / 3 / 3;
+    display: flex;
+    margin: 8px 8px 8px 0px;
+    background-color: var(--panel-view-background);
+    border-color: var(--panel-view-border);
+    border-style: solid;
+    border-width: thin;
 }
 
 /* styling a label that adheres to the vscode design language */
