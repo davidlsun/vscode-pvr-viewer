@@ -4,6 +4,7 @@ import {
     vsCodeCheckbox, Checkbox,
     vsCodeDropdown, Dropdown,
     vsCodeOption, Option,
+    vsCodeTextField, TextField,
     vsCodeProgressRing, ProgressRing
 } from '@vscode/webview-ui-toolkit';
 
@@ -12,6 +13,7 @@ provideVSCodeDesignSystem().register(
     vsCodeCheckbox(),
     vsCodeDropdown(),
     vsCodeOption(),
+    vsCodeTextField(),
     vsCodeProgressRing(),
 );
 
@@ -25,17 +27,9 @@ function main() {
     // inform vscode we are ready to receive messages
     vscode.postMessage({ command: 'ready' });
 
-    /*
-    // right clicking anywhere in the editor does nothing
-    const div = document.getElementById('preview-container') as HTMLDivElement;
-    div.dataset.vscodeContext = JSON.stringify({
-        webviewSection: 'main',
-        preventDefaultContextMenuItems: true
-    });
-
     // setup our test button
     const howdyButton = document.getElementById('howdy') as Button;
-    howdyButton.addEventListener('click', () => {
+    howdyButton?.addEventListener('click', () => {
         vscode.postMessage({
             command: 'info',
             text: 'hey there pardner!🕺'
@@ -43,8 +37,7 @@ function main() {
     });
 
     // colorspace option changed
-    const colorspaceInput = document.getElementById('colorspace') as Dropdown;
-    */
+    //const colorspaceInput = document.getElementById('colorspace') as Dropdown;
 }
 
 function setWindowMessageListener() {
@@ -69,7 +62,7 @@ function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number
         premultiplyAlpha: !premultiplied ? 'premultiply' : 'none',
         colorSpaceConversion: 'default'
     }).then(imageBitmap => {
-        const canvas = document.getElementById('preview-canvas') as HTMLCanvasElement;
+        const canvas = document.getElementById('texture-canvas') as HTMLCanvasElement;
         canvas.width = width;
         canvas.height = height;
 
@@ -83,7 +76,7 @@ function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number
         }
     }).then(() => {
         // hide spinner
-        const progress = document.getElementById('preview-progress') as ProgressRing;
+        const progress = document.getElementById('progress-spinner') as ProgressRing;
         progress.hidden = true;
 
         // inform extension we're done

@@ -3,8 +3,7 @@ import * as esbuild from 'esbuild';
 const baseConfig = {
     bundle: true,
     minify: process.env.NODE_ENV === 'production',
-    sourcemap: process.env.NODE_ENV === 'production' ? false : true,
-    sourceRoot: './src'
+    sourcemap: process.env.NODE_ENV === 'production' ? false : true
 };
 
 const extensionConfig = {

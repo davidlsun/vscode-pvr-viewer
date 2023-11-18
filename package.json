@@ -69,20 +69,48 @@
         "pvrViewer.fitSmallImagesToWindow": {
           "type": "boolean",
           "default": false,
-          "description": "Fit small images to window"
+          "description": "Fit small images to window",
+          "markdownDescription": "If the image is smaller than the panel, it will be scaled up to fill the panel."
         },
         "pvrViewer.fitLargeImagesToWindow": {
           "type": "boolean",
           "default": true,
-          "description": "Fit large images to window"
+          "description": "Fit large images to window",
+          "markdownDescription": "If the image is too large to be shown without scrollbars, it will be scaled down to fit in the panel."
         },
         "pvrViewer.convertLinearToSrgbForDisplay": {
           "type": "boolean",
           "default": false,
-          "description": "Convert Linear to sRGB for display"
+          "description": "Convert Linear to sRGB for display",
+          "markdownDescription": "sRGB sampling allows the Unity Editor to render Shaders in linear color space when Textures are in gamma color space. When you select to work in linear color space, the Editor defaults to using sRGB sampling. If your Textures are in linear color space, you need to work in linear color space and disable sRGB sampling for each Texture."
         }
       }
-    }
+    },
+    "menus": {
+      "webview/context": [
+        {
+          "command": "pvrViewer.openSettings",
+          "when": "webviewId == 'pvr.view' && webviewSection == 'main'"
+        },
+        {
+          "command": "pvrViewer.showTextureInfo",
+          "when": "webviewId == 'pvr.view' && webviewSection == 'canvas'"
+        }
+        
+      ]
+    },
+    "commands": [
+      {
+        "command": "pvrViewer.openSettings",
+        "title": "Settings",
+        "category": "PVR Viewer"
+      },
+      {
+        "command": "pvrViewer.showTextureInfo",
+        "title": "Texture Info",
+        "category": "PVR Viewer"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run package",

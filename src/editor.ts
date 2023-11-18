@@ -128,29 +128,44 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <link href="${iconsSrc}" rel="stylesheet">
 </head>
 <body>
-    <vscode-progress-ring id="preview-progress"></vscode-progress-ring>
-    <div id="preview-grid">
-        <div id="preview-controls">
-            <div class="dropdown-container">
-                <label for="colorspace">Color Space</label>
-                <vscode-dropdown id="colorspace">
-                    <span slot="indicator" class="codicon codicon-color-mode"></span>
-                    <vscode-option>Linear</vscode-option>
-                    <vscode-option>sRGB</vscode-option>
-                    <vscode-option>BT601</vscode-option>
-                    <vscode-option>BT709</vscode-option>
-                    <vscode-option>BT2020</vscode-option>
-                </vscode-dropdown>
-            </div>
-            <div class="checkbox-container">
-                <vscode-checkbox id="channel-red">R</vscode-checkbox>
-                <vscode-checkbox id="channel-green">G</vscode-checkbox>
-                <vscode-checkbox id="channel-blue">B</vscode-checkbox>
-                <vscode-checkbox id="channel-alpha">A</vscode-checkbox>
-            </div>
-            <vscode-button id="info-button">Texture Info</vscode-button>
+    <vscode-progress-ring id="progress-spinner"></vscode-progress-ring>
+    <div id="grid-container" data-vscode-context='{"webviewSection": "main", "preventDefaultContextMenuItems": true}'>
+        <div id="canvas-wrapper"><canvas id="texture-canvas" data-vscode-context='{"webviewSection": "canvas", "preventDefaultContextMenuItems": true}'></canvas></div>
+        <div id="colorspace-control" class="dropdown-container">
+            <label for="colorspace">Color Space</label>
+            <vscode-dropdown id="colorspace">
+                <vscode-option>Linear</vscode-option>
+                <vscode-option>sRGB</vscode-option>
+                <vscode-option>BT601</vscode-option>
+                <vscode-option>BT709</vscode-option>
+                <vscode-option>BT2020</vscode-option>
+            </vscode-dropdown>
         </div>
-        <div id="preview-container"><canvas id="preview-canvas"></canvas></div>
+        <div id="channels-control" class="checkbox-container">
+            <vscode-checkbox id="channel-red">R</vscode-checkbox>
+            <vscode-checkbox id="channel-green">G</vscode-checkbox>
+            <vscode-checkbox id="channel-blue">B</vscode-checkbox>
+            <vscode-checkbox id="channel-alpha">A</vscode-checkbox>
+        </div>
+        <div id="format-control">
+            <vscode-text-field id="pixel-format" value="R8 G8 B8 A8 UNorm" readonly>Pixel Format</vscode-text-field>
+        </div>
+        <div id="miplevel-control" class="dropdown-container">
+            <label for="miplevel">Mip Level</label>
+            <vscode-dropdown id="miplevel">
+                <vscode-option>0 : 1024 x 1024</vscode-option>
+                <vscode-option>1 : 512 x 512</vscode-option>
+                <vscode-option>2 : 256 x 256</vscode-option>
+                <vscode-option>3 : 128 x 128</vscode-option>
+                <vscode-option>4 : 64 x 64</vscode-option>
+                <vscode-option>5 : 32 x 32</vscode-option>
+                <vscode-option>6 : 16 x 16</vscode-option>
+                <vscode-option>7 : 8 x 8</vscode-option>
+                <vscode-option>8 : 4 x 4</vscode-option>
+                <vscode-option>9 : 2 x 2</vscode-option>
+                <vscode-option>10 : 1 x 1</vscode-option>
+            </vscode-dropdown>
+        </div>
     </div>
     <script src="${scriptSrc}"></script>
 </body>
