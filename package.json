@@ -23,8 +23,7 @@
     }
   },
   "categories": [
-    "Visualization",
-    "Other"
+    "Visualization"
   ],
   "keywords": [
     "texture",
@@ -66,7 +65,8 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "NODE_ENV=production node ./esbuild.mjs",
+    "vscode:prepublish": "npm run package",
+    "package": "NODE_ENV=production node ./esbuild.mjs",
     "build": "node ./esbuild.mjs",
     "watch": "node ./esbuild.mjs --watch",
     "pretest": "npm run build && npm run lint",

@@ -1,6 +1,15 @@
-//import { Button, provideVSCodeDesignSystem, vsCodeButton, vsCodeCheckbox } from '@vscode/webview-ui-toolkit';
+import {
+    provideVSCodeDesignSystem,
+    vsCodeButton, Button,
+    vsCodeCheckbox, Checkbox,
+    vsCodeProgressRing, ProgressRing
+} from '@vscode/webview-ui-toolkit';
 
-//provideVSCodeDesignSystem().register(vsCodeButton());
+provideVSCodeDesignSystem().register(
+    vsCodeButton(),
+    vsCodeCheckbox(),
+    vsCodeProgressRing()
+);
 
 const vscode = acquireVsCodeApi();
 
@@ -11,17 +20,33 @@ function main() {
 
     // inform vscode we are ready to receive messages
     vscode.postMessage({ command: 'ready' });
+
     /*
-        // right clicking anywhere in the editor does nothing
-        const div = document.getElementById('preview-container') as HTMLDivElement;
-        div.dataset.vscodeContext = JSON.stringify({
-            webviewSection: 'main',
-            preventDefaultContextMenuItems: true
-        });
+    // right clicking anywhere in the editor does nothing
+    const div = document.getElementById('preview-container') as HTMLDivElement;
+    div.dataset.vscodeContext = JSON.stringify({
+        webviewSection: 'main',
+        preventDefaultContextMenuItems: true
+    });
     */
+
     // setup our test button
-    //const howdyButton = document.getElementById('howdy') as Button;
-    //howdyButton.addEventListener('click', handleHowdyClick);
+    const howdyButton = document.getElementById('howdy') as Button;
+    howdyButton.addEventListener('click', () => {
+        vscode.postMessage({
+            command: 'info',
+            text: 'hey there pardner!🕺'
+        });
+    });
+
+    // setup our checkbox
+    const helloToggle = document.getElementById('hello') as Checkbox;
+    helloToggle.addEventListener('change', () => {
+        vscode.postMessage({
+            command: 'info',
+            text: 'checkbox toggled'
+        });
+    });
 }
 
 function setWindowMessageListener() {
@@ -37,15 +62,7 @@ function setWindowMessageListener() {
     });
 }
 
-function handleHowdyClick() {
-    vscode.postMessage({
-        command: 'info',
-        text: 'hey there pardner!🕺'
-    });
-}
-
 function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number, flipX: boolean, flipY: boolean, premultiplied: boolean) {
-    // replace the canvas with our RGBA32 buffer
     const imageData = new ImageData(new Uint8ClampedArray(buffer), width, height, {
         colorSpace: 'srgb'
     });
@@ -67,6 +84,11 @@ function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number
             canvas.classList.add('flip-x');
         }
     }).then(() => {
-        vscode.postMessage({ command: 'previewDone' });
+        // hide spinner
+        const progress = document.getElementById('preview-progress') as ProgressRing;
+        progress.hidden = true;
+
+        // inform extension we're done
+        vscode.postMessage({ command: 'shown' });
     });
 }

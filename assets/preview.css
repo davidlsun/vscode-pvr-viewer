@@ -8,27 +8,15 @@ html {
     box-sizing: inherit;
 }
 
-#preview-container {
-    /* fullscreen */
-    position: fixed;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    overflow: auto;
+body {
+    /* remove default style */
+    padding: 0;
 
     /* disable highlighting */
     user-select: none;
 }
 
-#preview-canvas {
-    /* padding from the editor panel */
-    padding: 8px;
-
-    /* scale down with fixed aspect to fit */
-    max-width: 100%;
-    max-height: 100%;
-
+#preview-progress {
     /* center horizontally and vertically */
     position: absolute;
     top: 50%;
@@ -36,6 +24,45 @@ html {
     translate: -50% -50%;
 }
 
+#preview-grid {
+    /* fill the entire panel, but requires body have no padding */
+    width: 100vw;
+    height: 100vh;
+
+    /* 3x3 grid */
+    display: grid;
+    grid-template-columns: 100px auto 100px;
+    grid-template-rows: 50px auto 50px;
+    grid-column-gap: 0;
+    grid-row-gap: 0;
+}
+
+#preview-controls {
+    /* top center cell of a 3x3 grid */
+    grid-area: 1 / 2 / 2 / 3;
+}
+
+#preview-container {
+    /* middle cell of a 3x3 grid */
+    grid-area: 2 / 2 / 3 / 3;
+
+    /* allow cell to shrink below content size */
+    min-height: 0;
+
+    /* allow div to expand to fill up the cell */
+    display: flex;
+}
+
+#preview-canvas {
+    /* scale down maintaining aspect ratio */
+    max-width: 100%;
+    max-height: 100%;
+
+    /* center horizontally and vertically in cell */
+    margin: auto;
+}
+
 .flip-x {
+    /* add this class to canvas to mirror horizontally */
     scale: -1 1;
 }

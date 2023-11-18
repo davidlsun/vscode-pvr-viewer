@@ -11,17 +11,13 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
     public flipY: boolean = false;
     public premultiplied: boolean = false;
 
-    public static create(uri: vscode.Uri): ImagePreviewDocument {
-        return new ImagePreviewDocument(uri);
-    }
-
-    private constructor(uri: vscode.Uri) {
+    public constructor(uri: vscode.Uri) {
         super(() => { });
         this.uri = uri;
-        this.buffer = this._loadAsync();
+        this.buffer = this._startLoadAsync();
     }
 
-    private async _loadAsync(): Promise<ArrayBuffer> {
+    private async _startLoadAsync(): Promise<ArrayBuffer> {
         const data = await vscode.workspace.fs.readFile(this.uri);
         const parser = new PVRParser(data);
         this.width = parser.width;
@@ -33,9 +29,6 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
         const buffer = await parser.decompress(0, 0, 0, 0, false);
         //console.timeEnd(`decompress: ${this.uri}`);
         return buffer;
-    }
-
-    public dispose(): void {
     }
 }
 
@@ -57,10 +50,10 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
 
     public openCustomDocument(uri: vscode.Uri, _openContext: vscode.CustomDocumentOpenContext, _token: vscode.CancellationToken): ImagePreviewDocument {
         //console.time(`open: ${uri}`);
-        return ImagePreviewDocument.create(uri);
+        return new ImagePreviewDocument(uri);
     }
 
-    public async resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
+    public resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): void {
         // convert local path of project files to a uri we can use in the webview
         const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'out', 'webview.js'));
         const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'assets', 'preview.css'));
@@ -75,24 +68,6 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
         //console.time(`webview: ${document.uri}`);
         panel.webview.html = this._getWebviewContent(panel.webview, scriptSrc, styleSrc);
         this._setWebviewMessageListener(panel.webview, document);
-    }
-
-    private _getWebviewContent(webview: vscode.Webview, scriptSrc: vscode.Uri, styleSrc: vscode.Uri): string {
-        return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src blob:; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource};">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="${styleSrc}" rel="stylesheet">
-</head>
-<body>
-    <div id="__preview-container"><canvas id="preview-canvas"></canvas></div>
-    <!--<vscode-button id="howdy">Howdy partner!</vscode-button>
-    <vscode-button id="howdy2">This is a button!</vscode-button>-->
-    <script src="${scriptSrc}"></script>
-</body>
-</html>`;
     }
 
     private _setWebviewMessageListener(webview: vscode.Webview, document: ImagePreviewDocument): void {
@@ -113,7 +88,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
                         //console.timeEnd(`webview: ${document.uri}`);
                         this._sendPreviewCommand(webview, document);
                         break;
-                    case 'previewDone':
+                    case 'shown':
                         //console.timeEnd(`open: ${document.uri}`);
                         break;
                 }
@@ -125,7 +100,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     private async _sendPreviewCommand(webview: vscode.Webview, document: ImagePreviewDocument): Promise<void> {
         // here is a good place to wait for loading to finish
         const buffer = await document.buffer;
-        
+
         webview.postMessage({
             command: 'preview',
             buffer: buffer,
@@ -135,5 +110,30 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
             flipY: document.flipY,
             premultiplied: document.premultiplied
         });
+    }
+
+    private _getWebviewContent(webview: vscode.Webview, scriptSrc: vscode.Uri, styleSrc: vscode.Uri): string {
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource};">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="${styleSrc}" rel="stylesheet">
+</head>
+<body>
+    <vscode-progress-ring id="preview-progress"></vscode-progress-ring>
+    <div id="preview-grid">
+        <div id="preview-controls">
+            <vscode-button id="howdy">Howdy partner!</vscode-button>
+            <vscode-checkbox id="hello" checked>Hello</vscode-checkbox>
+        </div>
+        <div id="preview-container">
+            <canvas id="preview-canvas"></canvas>
+        </div>
+    </div>
+    <script src="${scriptSrc}"></script>
+</body>
+</html>`;
     }
 }

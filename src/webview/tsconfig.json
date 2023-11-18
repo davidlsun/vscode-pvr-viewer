@@ -1,12 +1,12 @@
 {
     "compilerOptions": {
         "composite": true,
-        "target": "es6",
-        "module": "esnext",
-        "moduleResolution": "node",
+        "target": "ES6",
+        "module": "ESNext",
+        "moduleResolution": "Node",
         "lib": [
-            "es6",
-            "dom"
+            "ES2020",
+            "DOM"
         ],
         "outDir": "../../out",
         "rootDir": ".",
