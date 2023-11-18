@@ -66,3 +66,44 @@ body {
     /* add this class to canvas to mirror horizontally */
     scale: -1 1;
 }
+
+/* styling a label that adheres to the vscode design language */
+.dropdown-container {
+    box-sizing: border-box;
+    display: flex;
+    flex-flow: column nowrap;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.dropdown-container label {
+    display: block;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+    font-size: var(--vscode-font-size);
+    line-height: normal;
+    margin-bottom: 2px;
+}
+
+/* codicons */
+
+#icons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+}
+
+#icons .icon {
+    width: 140px;
+    padding: 20px;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+}
+
+#icons .icon .codicon {
+    font-size: 32px;
+    padding-bottom: 16px;
+}

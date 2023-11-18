@@ -57,6 +57,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
         // convert local path of project files to a uri we can use in the webview
         const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'out', 'webview.js'));
         const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'assets', 'preview.css'));
+        const iconsSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css'));
 
         // use a content security policy to only allow loading styles from our extension directory
         panel.webview.options = {
@@ -66,7 +67,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
 
         // setup initial content in new webview
         //console.time(`webview: ${document.uri}`);
-        panel.webview.html = this._getWebviewContent(panel.webview, scriptSrc, styleSrc);
+        panel.webview.html = this._getWebviewContent(panel.webview, scriptSrc, styleSrc, iconsSrc);
         this._setWebviewMessageListener(panel.webview, document);
     }
 
@@ -112,25 +113,35 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
         });
     }
 
-    private _getWebviewContent(webview: vscode.Webview, scriptSrc: vscode.Uri, styleSrc: vscode.Uri): string {
+    private _getWebviewContent(webview: vscode.Webview, scriptSrc: vscode.Uri, styleSrc: vscode.Uri, iconsSrc: vscode.Uri): string {
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'none'; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource};">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="${styleSrc}" rel="stylesheet">
+    <link href="${iconsSrc}" rel="stylesheet">
 </head>
-<body>
+<body>^
     <vscode-progress-ring id="preview-progress"></vscode-progress-ring>
     <div id="preview-grid">
         <div id="preview-controls">
             <vscode-button id="howdy">Howdy partner!</vscode-button>
             <vscode-checkbox id="hello" checked>Hello</vscode-checkbox>
+            <div class="dropdown-container">
+                <label for="colorspace">Color Space:</label>
+                <vscode-dropdown id="colorspace">
+                    <span slot="indicator" class="codicon codicon-color-mode"></span>
+                    <vscode-option>Linear</vscode-option>
+                    <vscode-option>sRGB</vscode-option>
+                    <vscode-option>BT601</vscode-option>
+                    <vscode-option>BT709</vscode-option>
+                    <vscode-option>BT2020</vscode-option>
+                </vscode-dropdown>
+            </div>
         </div>
-        <div id="preview-container">
-            <canvas id="preview-canvas"></canvas>
-        </div>
+        <div id="preview-container"><canvas id="preview-canvas"></canvas></div>
     </div>
     <script src="${scriptSrc}"></script>
 </body>

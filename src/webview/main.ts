@@ -2,13 +2,17 @@ import {
     provideVSCodeDesignSystem,
     vsCodeButton, Button,
     vsCodeCheckbox, Checkbox,
+    vsCodeDropdown, Dropdown,
+    vsCodeOption, Option,
     vsCodeProgressRing, ProgressRing
 } from '@vscode/webview-ui-toolkit';
 
 provideVSCodeDesignSystem().register(
     vsCodeButton(),
     vsCodeCheckbox(),
-    vsCodeProgressRing()
+    vsCodeDropdown(),
+    vsCodeOption(),
+    vsCodeProgressRing(),
 );
 
 const vscode = acquireVsCodeApi();
@@ -47,6 +51,9 @@ function main() {
             text: 'checkbox toggled'
         });
     });
+
+    // colorspace option changed
+    const colorspaceInput = document.getElementById('colorspace') as Dropdown;
 }
 
 function setWindowMessageListener() {
