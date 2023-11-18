@@ -4,29 +4,35 @@ import PVRParser from './parser';
 class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDocument {
 
     public readonly uri: vscode.Uri;
-    public readonly buffer: ArrayBuffer;
-    public readonly width: number;
-    public readonly height: number;
-    public readonly flipX: boolean;
-    public readonly flipY: boolean;
-    public readonly premultiplied: boolean;
+    public buffer: Promise<ArrayBuffer>;
+    public width: number = 0;
+    public height: number = 0;
+    public flipX: boolean = false;
+    public flipY: boolean = false;
+    public premultiplied: boolean = false;
 
-    public static async create(uri: vscode.Uri): Promise<ImagePreviewDocument> {
-        const data = await vscode.workspace.fs.readFile(uri);
-        const parser = new PVRParser(data);
-        const buffer = await parser.decompress(0, 0, 0, 0, false);
-        return new ImagePreviewDocument(uri, buffer, parser.width, parser.height, parser.flipX, parser.flipY, parser.premultiplied);
+    public static create(uri: vscode.Uri): ImagePreviewDocument {
+        return new ImagePreviewDocument(uri);
     }
 
-    private constructor(uri: vscode.Uri, buffer: ArrayBuffer, width: number, height: number, flipX: boolean, flipY: boolean, premultiplied: boolean) {
+    private constructor(uri: vscode.Uri) {
         super(() => { });
         this.uri = uri;
-        this.buffer = buffer;
-        this.width = width;
-        this.height = height;
-        this.flipX = flipX;
-        this.flipY = flipY;
-        this.premultiplied = premultiplied;
+        this.buffer = this._loadAsync();
+    }
+
+    private async _loadAsync(): Promise<ArrayBuffer> {
+        const data = await vscode.workspace.fs.readFile(this.uri);
+        const parser = new PVRParser(data);
+        this.width = parser.width;
+        this.height = parser.height;
+        this.flipX = parser.flipX;
+        this.flipY = parser.flipY;
+        this.premultiplied = parser.premultiplied;
+        //console.time(`decompress: ${this.uri}`);
+        const buffer = await parser.decompress(0, 0, 0, 0, false);
+        //console.timeEnd(`decompress: ${this.uri}`);
+        return buffer;
     }
 
     public dispose(): void {
@@ -49,8 +55,9 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
 
     private constructor(private readonly _context: vscode.ExtensionContext) { }
 
-    public async openCustomDocument(uri: vscode.Uri, _openContext: vscode.CustomDocumentOpenContext, _token: vscode.CancellationToken): Promise<ImagePreviewDocument> {
-        return await ImagePreviewDocument.create(uri);
+    public openCustomDocument(uri: vscode.Uri, _openContext: vscode.CustomDocumentOpenContext, _token: vscode.CancellationToken): ImagePreviewDocument {
+        //console.time(`open: ${uri}`);
+        return ImagePreviewDocument.create(uri);
     }
 
     public async resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): Promise<void> {
@@ -65,6 +72,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
         };
 
         // setup initial content in new webview
+        //console.time(`webview: ${document.uri}`);
         panel.webview.html = this._getWebviewContent(panel.webview, scriptSrc, styleSrc);
         this._setWebviewMessageListener(panel.webview, document);
     }
@@ -80,8 +88,8 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
 </head>
 <body>
     <div id="__preview-container"><canvas id="preview-canvas"></canvas></div>
-    <vscode-button id="howdy">Howdy partner!</vscode-button>
-    <vscode-button id="howdy2">This is a button!</vscode-button>
+    <!--<vscode-button id="howdy">Howdy partner!</vscode-button>
+    <vscode-button id="howdy2">This is a button!</vscode-button>-->
     <script src="${scriptSrc}"></script>
 </body>
 </html>`;
@@ -102,19 +110,30 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
                         vscode.window.showErrorMessage(message.text);
                         break;
                     case 'ready':
-                        webview.postMessage({
-                            command: 'preview',
-                            buffer: document.buffer,
-                            width: document.width,
-                            height: document.height,
-                            flipX: document.flipX,
-                            flipY: document.flipY,
-                            premultiplied: document.premultiplied
-                        });
+                        //console.timeEnd(`webview: ${document.uri}`);
+                        this._sendPreviewCommand(webview, document);
+                        break;
+                    case 'previewDone':
+                        //console.timeEnd(`open: ${document.uri}`);
                         break;
                 }
             },
             undefined,
             this._context.subscriptions);
+    }
+
+    private async _sendPreviewCommand(webview: vscode.Webview, document: ImagePreviewDocument): Promise<void> {
+        // here is a good place to wait for loading to finish
+        const buffer = await document.buffer;
+        
+        webview.postMessage({
+            command: 'preview',
+            buffer: buffer,
+            width: document.width,
+            height: document.height,
+            flipX: document.flipX,
+            flipY: document.flipY,
+            premultiplied: document.premultiplied
+        });
     }
 }

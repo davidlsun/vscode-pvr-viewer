@@ -1,22 +1,13 @@
-import { Button, provideVSCodeDesignSystem, vsCodeButton, vsCodeCheckbox } from '@vscode/webview-ui-toolkit';
+//import { Button, provideVSCodeDesignSystem, vsCodeButton, vsCodeCheckbox } from '@vscode/webview-ui-toolkit';
 
-provideVSCodeDesignSystem().register(vsCodeButton());
+//provideVSCodeDesignSystem().register(vsCodeButton());
 
 const vscode = acquireVsCodeApi();
 
 window.addEventListener('load', main);
 
 function main() {
-    // handle messages sent from the extension to the webview
-    window.addEventListener('message', event => {
-        const message = event.data;
-        switch (message.command) {
-            case 'preview':
-                // convert raw byte array to typed data array for loading into data view
-                handlePreviewCommand(message.buffer, message.width, message.height, message.flipX, message.flipY, message.premultiplied);
-                break;
-        }
-    });
+    setWindowMessageListener();
 
     // inform vscode we are ready to receive messages
     vscode.postMessage({ command: 'ready' });
@@ -29,8 +20,21 @@ function main() {
         });
     */
     // setup our test button
-    const howdyButton = document.getElementById('howdy') as Button;
-    howdyButton.addEventListener('click', handleHowdyClick);
+    //const howdyButton = document.getElementById('howdy') as Button;
+    //howdyButton.addEventListener('click', handleHowdyClick);
+}
+
+function setWindowMessageListener() {
+    // handle messages sent from the extension to the webview
+    window.addEventListener('message', event => {
+        const message = event.data;
+        switch (message.command) {
+            case 'preview':
+                // image data has been received, so start the process to show it
+                handlePreviewCommand(message.buffer, message.width, message.height, message.flipX, message.flipY, message.premultiplied);
+                break;
+        }
+    });
 }
 
 function handleHowdyClick() {
@@ -62,5 +66,7 @@ function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number
         if (flipX) {
             canvas.classList.add('flip-x');
         }
+    }).then(() => {
+        vscode.postMessage({ command: 'previewDone' });
     });
 }
