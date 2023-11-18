@@ -40,6 +40,8 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
 
     private static readonly viewType = 'pvr.view';
 
+    private readonly _webviews = new WebviewCollection();
+
     public static register(context: vscode.ExtensionContext): vscode.Disposable {
         return vscode.window.registerCustomEditorProvider(
             ImagePreviewProvider.viewType,
@@ -58,6 +60,9 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     }
 
     public resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): void {
+        // webview panel passed to this method is freshly constructed, so add it to our list
+        this._webviews.add(document.uri, panel);
+
         // convert local path of project files to a uri we can use in the webview
         const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'out', 'webview.js'));
         const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'preview.css'));
@@ -66,6 +71,7 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
         // use a content security policy to only allow loading styles from our extension directory
         panel.webview.options = {
             enableScripts: true,
+            enableCommandUris: true,
             localResourceRoots: [this._context.extensionUri]
         };
 
@@ -224,5 +230,41 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <script src="${scriptSrc}"></script>
 </body>
 </html>`;
+    }
+}
+
+
+/**
+ * Tracks all webviews.
+ */
+class WebviewCollection {
+
+    private readonly _webviews = new Set<{
+        readonly resource: string;
+        readonly webviewPanel: vscode.WebviewPanel;
+    }>();
+
+    /**
+     * Get all known webviews for a given uri.
+     */
+    public *get(uri: vscode.Uri): Iterable<vscode.WebviewPanel> {
+        const key = uri.toString();
+        for (const entry of this._webviews) {
+            if (entry.resource === key) {
+                yield entry.webviewPanel;
+            }
+        }
+    }
+
+    /**
+     * Add a new webview to the collection.
+     */
+    public add(uri: vscode.Uri, webviewPanel: vscode.WebviewPanel) {
+        const entry = { resource: uri.toString(), webviewPanel };
+        this._webviews.add(entry);
+
+        webviewPanel.onDidDispose(() => {
+            this._webviews.delete(entry);
+        });
     }
 }

@@ -96,9 +96,20 @@
           "command": "pvrViewer.showTextureInfo",
           "when": "webviewId == 'pvr.view' && webviewSection == 'canvas'"
         }
+      ],
+      "explorer/context": [
+        {
+          "command": "pvrViewer.openTextureFile",
+          "when": "resourceExtname == '.pvr'"
+        }
       ]
     },
     "commands": [
+      {
+        "command": "pvrViewer.openTextureFile",
+        "title": "View Texture",
+        "category": "PVR Viewer"
+      },
       {
         "command": "pvrViewer.openSettings",
         "title": "Settings",
@@ -107,6 +118,11 @@
       {
         "command": "pvrViewer.showTextureInfo",
         "title": "Texture Info",
+        "category": "PVR Viewer"
+      },
+      {
+        "command": "pvrViewer.hideTextureInfo",
+        "title": "Hide Texture Info",
         "category": "PVR Viewer"
       }
     ]
