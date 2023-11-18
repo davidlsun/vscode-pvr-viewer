@@ -5,6 +5,43 @@ function loadConfig(): void {
     const config = vscode.workspace.getConfiguration('pvrViewer');
 }
 
+/**
+ * Tracks all webviews.
+ */
+class WebviewCollection {
+
+    private readonly _webviews = new Set<{
+        readonly resource: string;
+        readonly webviewPanel: vscode.WebviewPanel;
+    }>();
+
+    /**
+     * Get all known webviews for a given uri.
+     */
+    public get(uri: vscode.Uri): vscode.WebviewPanel[] {
+        const key = uri.toString();
+        const res = new Array<vscode.WebviewPanel>();
+        for (const entry of this._webviews) {
+            if (entry.resource === key) {
+                res.push(entry.webviewPanel);
+            }
+        }
+        return res;
+    }
+
+    /**
+     * Add a new webview to the collection.
+     */
+    public add(uri: vscode.Uri, webviewPanel: vscode.WebviewPanel) {
+        const entry = { resource: uri.toString(), webviewPanel };
+        this._webviews.add(entry);
+
+        webviewPanel.onDidDispose(() => {
+            this._webviews.delete(entry);
+        });
+    }
+}
+
 class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDocument {
 
     public readonly uri: vscode.Uri;
@@ -29,34 +66,23 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
         this.flipX = parser.flipX;
         this.flipY = parser.flipY;
         this.premultiplied = parser.premultiplied;
-        //console.time(`decompress: ${this.uri}`);
         const buffer = await parser.decompress(0, 0, 0, 0, false);
-        //console.timeEnd(`decompress: ${this.uri}`);
         return buffer;
     }
 }
 
 export default class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider<ImagePreviewDocument> {
 
-    private static readonly viewType = 'pvr.view';
-
     private readonly _webviews = new WebviewCollection();
 
-    public static register(context: vscode.ExtensionContext): vscode.Disposable {
-        return vscode.window.registerCustomEditorProvider(
-            ImagePreviewProvider.viewType,
-            new ImagePreviewProvider(context),
-            {
-                webviewOptions: { retainContextWhenHidden: false },
-                supportsMultipleEditorsPerDocument: false
-            });
-    }
-
-    private constructor(private readonly _context: vscode.ExtensionContext) { }
+    public constructor(private readonly _context: vscode.ExtensionContext) { }
 
     public openCustomDocument(uri: vscode.Uri, _openContext: vscode.CustomDocumentOpenContext, _token: vscode.CancellationToken): ImagePreviewDocument {
-        //console.time(`open: ${uri}`);
         return new ImagePreviewDocument(uri);
+    }
+
+    public getCachedWebviewPanel(uri: vscode.Uri): vscode.WebviewPanel[] {
+        return this._webviews.get(uri);
     }
 
     public resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): void {
@@ -71,12 +97,11 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
         // use a content security policy to only allow loading styles from our extension directory
         panel.webview.options = {
             enableScripts: true,
-            enableCommandUris: true,
+            //enableCommandUris: true,
             localResourceRoots: [this._context.extensionUri]
         };
 
         // setup initial content in new webview
-        //console.time(`webview: ${document.uri}`);
         panel.webview.html = this._getWebviewContent(panel.webview, scriptSrc, styleSrc, iconsSrc);
         this._setWebviewMessageListener(panel.webview, document);
     }
@@ -96,11 +121,9 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
                         vscode.window.showErrorMessage(message.text);
                         break;
                     case 'ready':
-                        //console.timeEnd(`webview: ${document.uri}`);
                         this._sendPreviewCommand(webview, document);
                         break;
                     case 'shown':
-                        //console.timeEnd(`open: ${document.uri}`);
                         break;
                 }
             },
@@ -230,41 +253,5 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <script src="${scriptSrc}"></script>
 </body>
 </html>`;
-    }
-}
-
-
-/**
- * Tracks all webviews.
- */
-class WebviewCollection {
-
-    private readonly _webviews = new Set<{
-        readonly resource: string;
-        readonly webviewPanel: vscode.WebviewPanel;
-    }>();
-
-    /**
-     * Get all known webviews for a given uri.
-     */
-    public *get(uri: vscode.Uri): Iterable<vscode.WebviewPanel> {
-        const key = uri.toString();
-        for (const entry of this._webviews) {
-            if (entry.resource === key) {
-                yield entry.webviewPanel;
-            }
-        }
-    }
-
-    /**
-     * Add a new webview to the collection.
-     */
-    public add(uri: vscode.Uri, webviewPanel: vscode.WebviewPanel) {
-        const entry = { resource: uri.toString(), webviewPanel };
-        this._webviews.add(entry);
-
-        webviewPanel.onDidDispose(() => {
-            this._webviews.delete(entry);
-        });
     }
 }

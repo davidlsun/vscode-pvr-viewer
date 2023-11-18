@@ -1,10 +1,10 @@
 import {
     provideVSCodeDesignSystem,
     vsCodeButton, Button,
-    vsCodeCheckbox, Checkbox,
-    vsCodeDropdown, Dropdown,
-    vsCodeOption, Option,
-    vsCodeTextField, TextField,
+    vsCodeCheckbox,
+    vsCodeDropdown,
+    vsCodeOption,
+    vsCodeTextField,
     vsCodeDataGrid, vsCodeDataGridRow, vsCodeDataGridCell,
     vsCodeProgressRing, ProgressRing
 } from '@vscode/webview-ui-toolkit';
