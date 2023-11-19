@@ -108,7 +108,7 @@
       {
         "command": "pvrViewer.openTextureFile",
         "title": "View Texture",
-        "category": "PVR Viewer"
+        "category": "navigation"
       },
       {
         "command": "pvrViewer.openSettings",
@@ -143,6 +143,8 @@
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
     "@vscode/codicons": "^0.0.35",
+    "@vscode/test-cli": "^0.0.4",
+    "@vscode/test-electron": "^2.3.6",
     "esbuild": "^0.19.5",
     "eslint": "^8.52.0",
     "typescript": "^5.2.2"

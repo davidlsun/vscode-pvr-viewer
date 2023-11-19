@@ -5,7 +5,9 @@ import {
     vsCodeDropdown,
     vsCodeOption,
     vsCodeTextField,
-    vsCodeDataGrid, vsCodeDataGridRow, vsCodeDataGridCell,
+    vsCodeDataGrid,
+    vsCodeDataGridRow,
+    vsCodeDataGridCell,
     vsCodeProgressRing, ProgressRing
 } from '@vscode/webview-ui-toolkit';
 

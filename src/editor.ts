@@ -1,51 +1,56 @@
 import * as vscode from 'vscode';
 import PVRParser from './containers/parser';
 
-function loadConfig(): void {
-    const config = vscode.workspace.getConfiguration('pvrViewer');
-}
-
-/**
- * Tracks all webviews.
- */
-class WebviewCollection {
-
-    private readonly _webviews = new Set<{
-        readonly resource: string;
-        readonly webviewPanel: vscode.WebviewPanel;
+class PanelTracker {
+    private readonly _entries = new Set<{
+        readonly uri: vscode.Uri;
+        readonly panel: vscode.WebviewPanel;
+        active: boolean;
     }>();
 
-    /**
-     * Get all known webviews for a given uri.
-     */
-    public get(uri: vscode.Uri): vscode.WebviewPanel[] {
-        const key = uri.toString();
-        const res = new Array<vscode.WebviewPanel>();
-        for (const entry of this._webviews) {
-            if (entry.resource === key) {
-                res.push(entry.webviewPanel);
+    public get(uri: vscode.Uri): vscode.WebviewPanel | undefined {
+        for (const entry of this._entries) {
+            if (entry.uri == uri) {
+                return (entry.active ? entry.panel : undefined);
             }
         }
-        return res;
+        return undefined;
     }
 
-    /**
-     * Add a new webview to the collection.
-     */
-    public add(uri: vscode.Uri, webviewPanel: vscode.WebviewPanel) {
-        const entry = { resource: uri.toString(), webviewPanel };
-        this._webviews.add(entry);
+    public set(uri: vscode.Uri, panel: vscode.WebviewPanel, active: boolean): void {
+        // try to update existing entry
+        for (const entry of this._entries) {
+            if (entry.uri == uri) {
+                entry.active = active;
+                return;
+            }
+        }
 
-        webviewPanel.onDidDispose(() => {
-            this._webviews.delete(entry);
-        });
+        // create a new entry
+        const entry = { uri: uri, panel: panel, active: true };
+        this._entries.add(entry);
+    }
+
+    public getActive(): vscode.WebviewPanel | undefined {
+        for (const entry of this._entries) {
+            if (entry.active) {
+                return entry.panel;
+            }
+        }
+        return undefined;
     }
 }
 
-class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDocument {
+const _tracker = new PanelTracker();
+
+export function getActivePanel(): vscode.WebviewPanel | undefined {
+    return _tracker.getActive();
+}
+
+class TextureDocument extends vscode.Disposable implements vscode.CustomDocument {
 
     public readonly uri: vscode.Uri;
-    public buffer: Promise<ArrayBuffer>;
+    public readonly buffer: Promise<ArrayBuffer>;
     public width: number = 0;
     public height: number = 0;
     public flipX: boolean = false;
@@ -66,88 +71,78 @@ class ImagePreviewDocument extends vscode.Disposable implements vscode.CustomDoc
         this.flipX = parser.flipX;
         this.flipY = parser.flipY;
         this.premultiplied = parser.premultiplied;
-        const buffer = await parser.decompress(0, 0, 0, 0, false);
-        return buffer;
+        return parser.decompress(0, 0, 0, 0, false);
+    }
+
+    public override dispose(): void {
+        super.dispose();
     }
 }
 
-export default class ImagePreviewProvider implements vscode.CustomReadonlyEditorProvider<ImagePreviewDocument> {
-
-    private readonly _webviews = new WebviewCollection();
+export class TextureEditorProvider implements vscode.CustomReadonlyEditorProvider<TextureDocument> {
 
     public constructor(private readonly _context: vscode.ExtensionContext) { }
 
-    public openCustomDocument(uri: vscode.Uri, _openContext: vscode.CustomDocumentOpenContext, _token: vscode.CancellationToken): ImagePreviewDocument {
-        return new ImagePreviewDocument(uri);
+    public openCustomDocument(uri: vscode.Uri, _openContext: vscode.CustomDocumentOpenContext, _token: vscode.CancellationToken): TextureDocument {
+        return new TextureDocument(uri);
     }
 
-    public getCachedWebviewPanel(uri: vscode.Uri): vscode.WebviewPanel[] {
-        return this._webviews.get(uri);
-    }
+    public resolveCustomEditor(document: TextureDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): void {
+        // webview panel passed to this method is freshly constructed, so track lifetime here
+        _tracker.set(document.uri, panel, true);
 
-    public resolveCustomEditor(document: ImagePreviewDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): void {
-        // webview panel passed to this method is freshly constructed, so add it to our list
-        this._webviews.add(document.uri, panel);
+        // panel has a dispose, but document doesn't really have one
+        this._context.subscriptions.push(
+            panel.onDidDispose(() => {
+                // texture editor provider disposed
+                _tracker.set(document.uri, panel, false);
+            })
+        );
 
-        // convert local path of project files to a uri we can use in the webview
+        // whenever the panel changes, it informs us
+        this._context.subscriptions.push(
+            panel.onDidChangeViewState(message => {
+                // focus/visibility of a panel has changed
+                const panel = message.webviewPanel;
+                _tracker.set(document.uri, panel, panel.active && panel.visible);
+            })
+        );
+
+        // handle messages posted by webview, coming to us in the editor
+        this._context.subscriptions.push(
+            panel.webview.onDidReceiveMessage(message => {
+                if (message.command == 'ready') {
+                    sendPreviewCommand(panel.webview, document);
+                }
+            })
+        );
+
+        // setup initial content of new webview
         const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'out', 'webview.js'));
         const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'preview.css'));
         const iconsSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css'));
-
-        // use a content security policy to only allow loading styles from our extension directory
-        panel.webview.options = {
-            enableScripts: true,
-            //enableCommandUris: true,
-            localResourceRoots: [this._context.extensionUri]
-        };
-
-        // setup initial content in new webview
-        panel.webview.html = this._getWebviewContent(panel.webview, scriptSrc, styleSrc, iconsSrc);
-        this._setWebviewMessageListener(panel.webview, document);
+        panel.webview.options = { enableScripts: true, localResourceRoots: [this._context.extensionUri] };
+        panel.webview.html = getWebviewContent(panel.webview, scriptSrc, styleSrc, iconsSrc);
     }
+}
 
-    private _setWebviewMessageListener(webview: vscode.Webview, document: ImagePreviewDocument): void {
-        // handle messages posted by webview, coming to us in the editor
-        webview.onDidReceiveMessage(
-            message => {
-                switch (message.command) {
-                    case 'info':
-                        vscode.window.showInformationMessage(message.text);
-                        break;
-                    case 'warn':
-                        vscode.window.showWarningMessage(message.text);
-                        break;
-                    case 'error':
-                        vscode.window.showErrorMessage(message.text);
-                        break;
-                    case 'ready':
-                        this._sendPreviewCommand(webview, document);
-                        break;
-                    case 'shown':
-                        break;
-                }
-            },
-            undefined,
-            this._context.subscriptions);
-    }
+async function sendPreviewCommand(webview: vscode.Webview, document: TextureDocument): Promise<void> {
+    // here is a good place to wait for loading to finish
+    const buffer = await document.buffer;
 
-    private async _sendPreviewCommand(webview: vscode.Webview, document: ImagePreviewDocument): Promise<void> {
-        // here is a good place to wait for loading to finish
-        const buffer = await document.buffer;
+    webview.postMessage({
+        command: 'preview',
+        buffer: buffer,
+        width: document.width,
+        height: document.height,
+        flipX: document.flipX,
+        flipY: document.flipY,
+        premultiplied: document.premultiplied
+    });
+}
 
-        webview.postMessage({
-            command: 'preview',
-            buffer: buffer,
-            width: document.width,
-            height: document.height,
-            flipX: document.flipX,
-            flipY: document.flipY,
-            premultiplied: document.premultiplied
-        });
-    }
-
-    private _getWebviewContent(webview: vscode.Webview, scriptSrc: vscode.Uri, styleSrc: vscode.Uri, iconsSrc: vscode.Uri): string {
-        return `<!DOCTYPE html>
+function getWebviewContent(webview: vscode.Webview, scriptSrc: vscode.Uri, styleSrc: vscode.Uri, iconsSrc: vscode.Uri): string {
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -253,5 +248,4 @@ export default class ImagePreviewProvider implements vscode.CustomReadonlyEditor
     <script src="${scriptSrc}"></script>
 </body>
 </html>`;
-    }
 }
