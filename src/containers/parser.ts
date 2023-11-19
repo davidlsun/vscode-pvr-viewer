@@ -94,7 +94,7 @@ export default class PVRParser {
         this.flipX = false;
         this.flipY = false;
         this.flipZ = false;
-        this.maxRange = 6.0;
+        this.maxRange = 8.0;
 
         // read all metadata entries
         let metaView = new DataView(data.buffer, data.byteOffset + HeaderSize, metaDataSize);
