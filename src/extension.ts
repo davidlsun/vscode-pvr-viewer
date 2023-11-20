@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { TextureEditorProvider, getActivePanel } from './editor';
+import TextureEditorProvider from './editor';
 
 const marketplaceId = '@ext:davidsun.pvr-viewer';
 const viewType = 'pvr.view';
@@ -23,11 +23,12 @@ export function activate(context: vscode.ExtensionContext) {
 
     context.subscriptions.push(
         vscode.commands.registerCommand('pvrViewer.showTextureInfo', (_data: Object) => {
-            const panel = getActivePanel();
+            const panel = provider.activeWebviewPanel;
             if (panel !== undefined) {
                 const vt = panel.viewType;
                 const title = panel.title;
                 console.log(`active: ${vt}, ${title}`);
+                panel.webview.postMessage({ command: 'toggleTextureInfo' });
             }
         })
     );

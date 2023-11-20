@@ -27,7 +27,7 @@ const vscode = acquireVsCodeApi();
 
 window.addEventListener('load', main);
 
-function main() {
+function main(): void {
     setWindowMessageListener();
 
     // inform vscode we are ready to receive messages
@@ -46,7 +46,7 @@ function main() {
     //const colorspaceInput = document.getElementById('colorspace') as Dropdown;
 }
 
-function setWindowMessageListener() {
+function setWindowMessageListener(): void {
     // handle messages sent from the extension to the webview
     window.addEventListener('message', event => {
         const message = event.data;
@@ -55,11 +55,17 @@ function setWindowMessageListener() {
                 // image data has been received, so start the process to show it
                 handlePreviewCommand(message.buffer, message.width, message.height, message.flipX, message.flipY, message.premultiplied);
                 break;
+            case 'toggleTextureInfo':
+                toggleTextureInfo();
+                break;
+            case 'toggleControlBar':
+                toggleControlBar();
+                break;
         }
     });
 }
 
-function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number, flipX: boolean, flipY: boolean, premultiplied: boolean) {
+function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number, flipX: boolean, flipY: boolean, premultiplied: boolean): void {
     const imageData = new ImageData(new Uint8ClampedArray(buffer), width, height, {
         colorSpace: 'srgb'
     });
@@ -88,4 +94,14 @@ function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number
         // inform extension we're done
         vscode.postMessage({ command: 'shown' });
     });
+}
+
+function toggleTextureInfo(): void {
+    const sideBar = document.getElementById('side-bar') as HTMLCanvasElement;
+    sideBar.hidden = !sideBar.hidden;
+}
+
+function toggleControlBar(): void {
+    const bottomBar = document.getElementById('bottom-bar') as HTMLCanvasElement;
+    bottomBar.hidden = !bottomBar.hidden;
 }

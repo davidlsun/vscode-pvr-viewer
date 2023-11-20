@@ -24,22 +24,49 @@ body {
     translate: -50% -50%;
 }
 
-#grid-container {
+#main-container {
     /* fill the entire panel, but requires body have no padding */
     width: 100vw;
     height: 100vh;
 
-    /* 6x3 grid */
-    display: grid;
-    grid-template-columns: 1fr 300px;
-    grid-template-rows: 1fr 80px;
-    grid-column-gap: 0;
-    grid-row-gap: 0;
+    /* allow side bar to be optionally shown */
+    display: flex;
+    flex-direction: row;
+}
+
+#main-area {
+    /* take up all space not used by the side bar */
+    order: 1;
+    flex: 1 1 auto;
+
+    /* allow bottom bar to be optionally shown */
+    display: flex;
+    flex-direction: column;
+
+    /* allow bottom bar to be as narrow as it wants without scrollbars */
+    overflow-x: hidden;
+}
+
+#side-bar {
+    /* docked on the right at a fixed width */
+    order: 2;
+    flex: 0 0 300px;
+    margin: 0 8px 8px 0;
+
+    /* style to match the current vscode theme */
+    background-color: var(--panel-view-background);
+    border-color: var(--panel-view-border);
+    border-style: solid;
+    border-width: thin;
+
+    /* allow side bar to be as short as it wants without scrollbars */
+    overflow-y: hidden;
 }
 
 #canvas-wrapper {
     /* upper left majority of screen */
-    grid-area: 1 / 1 / 2 / 2;
+    order: 1;
+    flex: 1 1 auto;
 
     /* allow cell to shrink below content size */
     min-height: 0;
@@ -66,9 +93,13 @@ body {
 }
 
 #bottom-bar {
-    /* docked on the bottom*/
-    grid-area: 2 / 1 / 3 / 2;
+    /* docked on the bottom with a fixed height */
+    order: 2;
+    flex: 0 0 50px;
+
+    /* arrange all children horizontally */
     display: flex;
+    flex-direction: row;
     justify-content: space-around;
     margin: 8px;
 }
@@ -104,17 +135,6 @@ body {
 
 #miplevel {
     min-width: 150px;
-}
-
-#side-panel {
-    /* docked on the right */
-    grid-area: 1 / 2 / 3 / 3;
-    display: flex;
-    margin: 0 8px 8px 0;
-    background-color: var(--panel-view-background);
-    border-color: var(--panel-view-border);
-    border-style: solid;
-    border-width: thin;
 }
 
 /* styling a label that adheres to the vscode design language */

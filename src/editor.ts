@@ -8,30 +8,43 @@ class PanelTracker {
         active: boolean;
     }>();
 
-    public get(uri: vscode.Uri): vscode.WebviewPanel | undefined {
+    public add(uri: vscode.Uri, panel: vscode.WebviewPanel): boolean {
+        // make sure there isn't already an entry for this panel
         for (const entry of this._entries) {
-            if (entry.uri == uri) {
-                return (entry.active ? entry.panel : undefined);
-            }
-        }
-        return undefined;
-    }
-
-    public set(uri: vscode.Uri, panel: vscode.WebviewPanel, active: boolean): void {
-        // try to update existing entry
-        for (const entry of this._entries) {
-            if (entry.uri == uri) {
-                entry.active = active;
-                return;
+            if (entry.uri === uri) {
+                return false;
             }
         }
 
         // create a new entry
         const entry = { uri: uri, panel: panel, active: true };
         this._entries.add(entry);
+        return true;
+    }
+
+    public remove(uri: vscode.Uri): boolean {
+        // remove an existing entry
+        for (const entry of this._entries) {
+            if (entry.uri === uri) {
+                return this._entries.delete(entry);
+            }
+        }
+        return false;
+    }
+
+    public update(uri: vscode.Uri, active: boolean): boolean {
+        // try to update existing entry
+        for (const entry of this._entries) {
+            if (entry.uri === uri) {
+                entry.active = active;
+                return true;
+            }
+        }
+        return false;
     }
 
     public getActive(): vscode.WebviewPanel | undefined {
+        // there should be exactly 0 or 1 active panels
         for (const entry of this._entries) {
             if (entry.active) {
                 return entry.panel;
@@ -39,12 +52,6 @@ class PanelTracker {
         }
         return undefined;
     }
-}
-
-const _tracker = new PanelTracker();
-
-export function getActivePanel(): vscode.WebviewPanel | undefined {
-    return _tracker.getActive();
 }
 
 class TextureDocument extends vscode.Disposable implements vscode.CustomDocument {
@@ -79,7 +86,9 @@ class TextureDocument extends vscode.Disposable implements vscode.CustomDocument
     }
 }
 
-export class TextureEditorProvider implements vscode.CustomReadonlyEditorProvider<TextureDocument> {
+export default class TextureEditorProvider implements vscode.CustomReadonlyEditorProvider<TextureDocument> {
+
+    private readonly _tracker = new PanelTracker();
 
     public constructor(private readonly _context: vscode.ExtensionContext) { }
 
@@ -89,13 +98,13 @@ export class TextureEditorProvider implements vscode.CustomReadonlyEditorProvide
 
     public resolveCustomEditor(document: TextureDocument, panel: vscode.WebviewPanel, _token: vscode.CancellationToken): void {
         // webview panel passed to this method is freshly constructed, so track lifetime here
-        _tracker.set(document.uri, panel, true);
+        this._tracker.add(document.uri, panel);
 
         // panel has a dispose, but document doesn't really have one
         this._context.subscriptions.push(
             panel.onDidDispose(() => {
                 // texture editor provider disposed
-                _tracker.set(document.uri, panel, false);
+                this._tracker.remove(document.uri);
             })
         );
 
@@ -104,15 +113,17 @@ export class TextureEditorProvider implements vscode.CustomReadonlyEditorProvide
             panel.onDidChangeViewState(message => {
                 // focus/visibility of a panel has changed
                 const panel = message.webviewPanel;
-                _tracker.set(document.uri, panel, panel.active && panel.visible);
+                this._tracker.update(document.uri, panel.active && panel.visible);
             })
         );
 
         // handle messages posted by webview, coming to us in the editor
         this._context.subscriptions.push(
             panel.webview.onDidReceiveMessage(message => {
-                if (message.command == 'ready') {
-                    sendPreviewCommand(panel.webview, document);
+                switch (message.command) {
+                    case 'ready':
+                        sendPreviewCommand(panel.webview, document);
+                        break;
                 }
             })
         );
@@ -123,6 +134,10 @@ export class TextureEditorProvider implements vscode.CustomReadonlyEditorProvide
         const iconsSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css'));
         panel.webview.options = { enableScripts: true, localResourceRoots: [this._context.extensionUri] };
         panel.webview.html = getWebviewContent(panel.webview, scriptSrc, styleSrc, iconsSrc);
+    }
+
+    public get activeWebviewPanel(): vscode.WebviewPanel | undefined {
+        return this._tracker.getActive();
     }
 }
 
@@ -153,46 +168,48 @@ function getWebviewContent(webview: vscode.Webview, scriptSrc: vscode.Uri, style
 </head>
 <body>
     <vscode-progress-ring id="progress-spinner"></vscode-progress-ring>
-    <div id="grid-container" data-vscode-context='{"webviewSection": "main", "preventDefaultContextMenuItems": true}'>
-        <div id="canvas-wrapper"><canvas id="texture-canvas" data-vscode-context='{"webviewSection": "canvas", "preventDefaultContextMenuItems": true}'></canvas></div>
-        <div id="bottom-bar">
-            <div id="format-control">
-                <vscode-text-field id="pixel-format" value="R8 G8 B8 A8 UNorm" readonly>Pixel Format</vscode-text-field>
-            </div>
-            <div id="colorspace-control" class="dropdown-container">
-                <label for="colorspace">Color Space</label>
-                <vscode-dropdown id="colorspace">
-                    <vscode-option>Linear</vscode-option>
-                    <vscode-option>sRGB</vscode-option>
-                    <vscode-option>BT601</vscode-option>
-                    <vscode-option>BT709</vscode-option>
-                    <vscode-option>BT2020</vscode-option>
-                </vscode-dropdown>
-            </div>
-            <div id="miplevel-control" class="dropdown-container">
-                <label for="miplevel">Mip Level</label>
-                <vscode-dropdown id="miplevel">
-                    <vscode-option>0 : 1024 x 1024</vscode-option>
-                    <vscode-option>1 : 512 x 512</vscode-option>
-                    <vscode-option>2 : 256 x 256</vscode-option>
-                    <vscode-option>3 : 128 x 128</vscode-option>
-                    <vscode-option>4 : 64 x 64</vscode-option>
-                    <vscode-option>5 : 32 x 32</vscode-option>
-                    <vscode-option>6 : 16 x 16</vscode-option>
-                    <vscode-option>7 : 8 x 8</vscode-option>
-                    <vscode-option>8 : 4 x 4</vscode-option>
-                    <vscode-option>9 : 2 x 2</vscode-option>
-                    <vscode-option>10 : 1 x 1</vscode-option>
-                </vscode-dropdown>
-            </div>
-            <div id="channels-control" class="checkbox-container">
-                <vscode-checkbox id="channel-red">R</vscode-checkbox>
-                <vscode-checkbox id="channel-green">G</vscode-checkbox>
-                <vscode-checkbox id="channel-blue">B</vscode-checkbox>
-                <vscode-checkbox id="channel-alpha">A</vscode-checkbox>
+    <div id="main-container" data-vscode-context='{"webviewSection": "main", "preventDefaultContextMenuItems": true}'>
+        <div id="main-area">
+            <div id="canvas-wrapper"><canvas id="texture-canvas" data-vscode-context='{"webviewSection": "canvas", "preventDefaultContextMenuItems": true}'></canvas></div>
+            <div id="bottom-bar">
+                <div id="format-control">
+                    <vscode-text-field id="pixel-format" value="R8 G8 B8 A8 UNorm" readonly>Pixel Format</vscode-text-field>
+                </div>
+                <div id="colorspace-control" class="dropdown-container">
+                    <label for="colorspace">Color Space</label>
+                    <vscode-dropdown id="colorspace">
+                        <vscode-option>Linear</vscode-option>
+                        <vscode-option>sRGB</vscode-option>
+                        <vscode-option>BT601</vscode-option>
+                        <vscode-option>BT709</vscode-option>
+                        <vscode-option>BT2020</vscode-option>
+                    </vscode-dropdown>
+                </div>
+                <div id="miplevel-control" class="dropdown-container">
+                    <label for="miplevel">Mip Level</label>
+                    <vscode-dropdown id="miplevel">
+                        <vscode-option>0 : 1024 x 1024</vscode-option>
+                        <vscode-option>1 : 512 x 512</vscode-option>
+                        <vscode-option>2 : 256 x 256</vscode-option>
+                        <vscode-option>3 : 128 x 128</vscode-option>
+                        <vscode-option>4 : 64 x 64</vscode-option>
+                        <vscode-option>5 : 32 x 32</vscode-option>
+                        <vscode-option>6 : 16 x 16</vscode-option>
+                        <vscode-option>7 : 8 x 8</vscode-option>
+                        <vscode-option>8 : 4 x 4</vscode-option>
+                        <vscode-option>9 : 2 x 2</vscode-option>
+                        <vscode-option>10 : 1 x 1</vscode-option>
+                    </vscode-dropdown>
+                </div>
+                <div id="channels-control" class="checkbox-container">
+                    <vscode-checkbox id="channel-red">R</vscode-checkbox>
+                    <vscode-checkbox id="channel-green">G</vscode-checkbox>
+                    <vscode-checkbox id="channel-blue">B</vscode-checkbox>
+                    <vscode-checkbox id="channel-alpha">A</vscode-checkbox>
+                </div>
             </div>
         </div>
-        <div id="side-panel">
+        <div id="side-bar">
             <vscode-data-grid grid-template-columns="1fr 2fr">
                 <vscode-data-grid-row row-type="header">
                     <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Key</vscode-data-grid-cell>
