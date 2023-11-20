@@ -56,13 +56,6 @@
         ]
       }
     ],
-    "iconThemes": [
-      {
-        "id": "pvr-files",
-        "label": "PVR Files",
-        "path": "./assets/pvr-files-icon-theme.json"
-      }
-    ],
     "configuration": {
       "title": "PVR Viewer",
       "properties": {
@@ -90,40 +83,27 @@
       "webview/context": [
         {
           "command": "pvrViewer.openSettings",
-          "when": "webviewId == 'pvr.view' && webviewSection == 'main'"
+          "when": "webviewId == 'pvr.view'",
+          "group": "z_commands"
         },
         {
-          "command": "pvrViewer.showTextureInfo",
-          "when": "webviewId == 'pvr.view' && webviewSection == 'canvas'"
-        }
-      ],
-      "explorer/context": [
-        {
-          "command": "pvrViewer.openTextureFile",
-          "when": "resourceExtname == '.pvr'"
+          "command": "pvrViewer.toggleTextureInfo",
+          "when": "webviewId == 'pvr.view'",
+          "group": "navigation"
         }
       ]
     },
     "commands": [
       {
-        "command": "pvrViewer.openTextureFile",
-        "title": "View Texture",
-        "category": "navigation"
-      },
-      {
         "command": "pvrViewer.openSettings",
-        "title": "Settings",
-        "category": "PVR Viewer"
+        "category": "PVR Viewer",
+        "title": "Open Settings..."
       },
       {
-        "command": "pvrViewer.showTextureInfo",
-        "title": "Texture Info",
-        "category": "PVR Viewer"
-      },
-      {
-        "command": "pvrViewer.hideTextureInfo",
-        "title": "Hide Texture Info",
-        "category": "PVR Viewer"
+        "command": "pvrViewer.toggleTextureInfo",
+        "category": "PVR Viewer",
+        "title": "Toggle Texture Info",
+        "enablement": "activeWebviewPanelId == 'pvr.view'"
       }
     ]
   },

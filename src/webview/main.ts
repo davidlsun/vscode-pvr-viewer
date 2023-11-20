@@ -97,11 +97,11 @@ function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number
 }
 
 function toggleTextureInfo(): void {
-    const sideBar = document.getElementById('side-bar') as HTMLCanvasElement;
+    const sideBar = document.getElementById('side-area') as HTMLCanvasElement;
     sideBar.hidden = !sideBar.hidden;
 }
 
 function toggleControlBar(): void {
-    const bottomBar = document.getElementById('bottom-bar') as HTMLCanvasElement;
+    const bottomBar = document.getElementById('bottom-area') as HTMLCanvasElement;
     bottomBar.hidden = !bottomBar.hidden;
 }

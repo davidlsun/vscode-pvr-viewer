@@ -170,47 +170,49 @@ function getWebviewContent(webview: vscode.Webview, scriptSrc: vscode.Uri, style
     <vscode-progress-ring id="progress-spinner"></vscode-progress-ring>
     <div id="main-container" data-vscode-context='{"webviewSection": "main", "preventDefaultContextMenuItems": true}'>
         <div id="main-area">
-            <div id="canvas-wrapper"><canvas id="texture-canvas" data-vscode-context='{"webviewSection": "canvas", "preventDefaultContextMenuItems": true}'></canvas></div>
-            <div id="bottom-bar">
-                <div id="format-control">
-                    <vscode-text-field id="pixel-format" value="R8 G8 B8 A8 UNorm" readonly>Pixel Format</vscode-text-field>
-                </div>
-                <div id="colorspace-control" class="dropdown-container">
-                    <label for="colorspace">Color Space</label>
-                    <vscode-dropdown id="colorspace">
-                        <vscode-option>Linear</vscode-option>
-                        <vscode-option>sRGB</vscode-option>
-                        <vscode-option>BT601</vscode-option>
-                        <vscode-option>BT709</vscode-option>
-                        <vscode-option>BT2020</vscode-option>
-                    </vscode-dropdown>
-                </div>
-                <div id="miplevel-control" class="dropdown-container">
-                    <label for="miplevel">Mip Level</label>
-                    <vscode-dropdown id="miplevel">
-                        <vscode-option>0 : 1024 x 1024</vscode-option>
-                        <vscode-option>1 : 512 x 512</vscode-option>
-                        <vscode-option>2 : 256 x 256</vscode-option>
-                        <vscode-option>3 : 128 x 128</vscode-option>
-                        <vscode-option>4 : 64 x 64</vscode-option>
-                        <vscode-option>5 : 32 x 32</vscode-option>
-                        <vscode-option>6 : 16 x 16</vscode-option>
-                        <vscode-option>7 : 8 x 8</vscode-option>
-                        <vscode-option>8 : 4 x 4</vscode-option>
-                        <vscode-option>9 : 2 x 2</vscode-option>
-                        <vscode-option>10 : 1 x 1</vscode-option>
-                    </vscode-dropdown>
-                </div>
-                <div id="channels-control" class="checkbox-container">
-                    <vscode-checkbox id="channel-red">R</vscode-checkbox>
-                    <vscode-checkbox id="channel-green">G</vscode-checkbox>
-                    <vscode-checkbox id="channel-blue">B</vscode-checkbox>
-                    <vscode-checkbox id="channel-alpha">A</vscode-checkbox>
+            <div id="canvas-wrapper"><canvas id="texture-canvas"></canvas></div>
+            <div id="bottom-area" hidden>
+                <div id="controls-bar">
+                    <div id="format-control">
+                        <vscode-text-field id="pixel-format" value="R8 G8 B8 A8 UNorm" readonly>Pixel Format</vscode-text-field>
+                    </div>
+                    <div id="colorspace-control" class="dropdown-container">
+                        <label for="colorspace">Color Space</label>
+                        <vscode-dropdown id="colorspace">
+                            <vscode-option>Linear</vscode-option>
+                            <vscode-option>sRGB</vscode-option>
+                            <vscode-option>BT601</vscode-option>
+                            <vscode-option>BT709</vscode-option>
+                            <vscode-option>BT2020</vscode-option>
+                        </vscode-dropdown>
+                    </div>
+                    <div id="miplevel-control" class="dropdown-container">
+                        <label for="miplevel">Mip Level</label>
+                        <vscode-dropdown id="miplevel">
+                            <vscode-option>0 : 1024 x 1024</vscode-option>
+                            <vscode-option>1 : 512 x 512</vscode-option>
+                            <vscode-option>2 : 256 x 256</vscode-option>
+                            <vscode-option>3 : 128 x 128</vscode-option>
+                            <vscode-option>4 : 64 x 64</vscode-option>
+                            <vscode-option>5 : 32 x 32</vscode-option>
+                            <vscode-option>6 : 16 x 16</vscode-option>
+                            <vscode-option>7 : 8 x 8</vscode-option>
+                            <vscode-option>8 : 4 x 4</vscode-option>
+                            <vscode-option>9 : 2 x 2</vscode-option>
+                            <vscode-option>10 : 1 x 1</vscode-option>
+                        </vscode-dropdown>
+                    </div>
+                    <div id="channels-control" class="checkbox-container">
+                        <vscode-checkbox id="channel-red">R</vscode-checkbox>
+                        <vscode-checkbox id="channel-green">G</vscode-checkbox>
+                        <vscode-checkbox id="channel-blue">B</vscode-checkbox>
+                        <vscode-checkbox id="channel-alpha">A</vscode-checkbox>
+                    </div>
                 </div>
             </div>
         </div>
-        <div id="side-bar">
-            <vscode-data-grid grid-template-columns="1fr 2fr">
+        <div id="side-area" hidden>
+            <vscode-data-grid id="info-grid" grid-template-columns="1fr 2fr">
                 <vscode-data-grid-row row-type="header">
                     <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Key</vscode-data-grid-cell>
                     <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Value</vscode-data-grid-cell>

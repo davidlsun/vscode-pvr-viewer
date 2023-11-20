@@ -16,13 +16,13 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('pvrViewer.openTextureFile', (uri: vscode.Uri) => {
-            vscode.commands.executeCommand('vscode.openWith', uri, viewType);
+        vscode.commands.registerCommand('pvrViewer.openSettings', () => {
+            vscode.commands.executeCommand('workbench.action.openSettings', marketplaceId);
         })
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('pvrViewer.showTextureInfo', (_data: Object) => {
+        vscode.commands.registerCommand('pvrViewer.toggleTextureInfo', (_data: Object) => {
             const panel = provider.activeWebviewPanel;
             if (panel !== undefined) {
                 const vt = panel.viewType;
@@ -30,12 +30,6 @@ export function activate(context: vscode.ExtensionContext) {
                 console.log(`active: ${vt}, ${title}`);
                 panel.webview.postMessage({ command: 'toggleTextureInfo' });
             }
-        })
-    );
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand('pvrViewer.openSettings', () => {
-            vscode.commands.executeCommand('workbench.action.openSettings', marketplaceId);
         })
     );
 }

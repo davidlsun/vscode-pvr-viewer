@@ -47,10 +47,10 @@ body {
     overflow-x: hidden;
 }
 
-#side-bar {
+#side-area {
     /* docked on the right at a fixed width */
     order: 2;
-    flex: 0 0 300px;
+    flex: 0 0 auto;
     margin: 0 8px 8px 0;
 
     /* style to match the current vscode theme */
@@ -61,6 +61,11 @@ body {
 
     /* allow side bar to be as short as it wants without scrollbars */
     overflow-y: hidden;
+}
+
+#info-grid {
+    /* fixed width */
+    width: 300px;
 }
 
 #canvas-wrapper {
@@ -92,10 +97,15 @@ body {
     scale: -1 1;
 }
 
-#bottom-bar {
+#bottom-area {
     /* docked on the bottom with a fixed height */
     order: 2;
-    flex: 0 0 50px;
+    flex: 0 0 auto;
+}
+
+#controls-bar {
+    /* fixed height */
+    height: 50px;
 
     /* arrange all children horizontally */
     display: flex;
