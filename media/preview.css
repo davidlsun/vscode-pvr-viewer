@@ -110,7 +110,7 @@ body {
     /* docked on the right */
     grid-area: 1 / 2 / 3 / 3;
     display: flex;
-    margin: 0 10px 8px 0;
+    margin: 0 8px 8px 0;
     background-color: var(--panel-view-background);
     border-color: var(--panel-view-border);
     border-style: solid;

@@ -137,7 +137,8 @@ export default class PVRParser {
                 case pvr.MetaData.PerChannelType:
                     console.log(`PerChannelType: ${metaLen} bytes`);
                     for (let i = 0; i < metaLen; i++) {
-                        //console.log(`${i}: ${metaView.getUint8(pos + i)}`);
+                        const type: pvr.VariableType = metaView.getUint8(pos + i);
+                        //console.log(`${i}: ${type.toString()}`);
                     }
                     break;
                 case pvr.MetaData.SupercompressionGlobalData:
