@@ -100,17 +100,39 @@ export default class PVRParser {
         let metaView = new DataView(data.buffer, data.byteOffset + HeaderSize, metaDataSize);
         for (let pos = 0; pos < metaDataSize; ) {
             if (metaDataSize - pos < 12) { console.log('pvr-viewer: corrupt metadata'); break; }
-            const creator = metaView.getUint32(pos + 0, true);
+            const fourcc = metaView.getUint32(pos + 0, true);
+            if (fourcc !== 0x03525650) { console.log('pvr-viewer: unrecognized metadata fourcc'); break; }
             const semantic: pvr.MetaData = metaView.getUint32(pos + 4, true);
             const metaLen = metaView.getUint32(pos + 8, true);
             pos += 12;
             if (metaDataSize - pos < metaLen) { console.log('pvr-viewer: corrupt metadata'); break; }
             switch (semantic) {
+                case pvr.MetaData.TextureAtlasCoords:
+                    if ((metaLen % 12) !== 0) { console.log('pvr-viewer: corrupt texture atlas coords'); break; }
+                    // variable data data. a set of 4 ints for each subtexture on the atlas
+                    break;
+                case pvr.MetaData.BumpData:
+                    if (metaLen !== 8) { console.log('pvr-viewer: corrupt bump data'); break; }
+                    break;
+                case pvr.MetaData.CubeMapOrder:
+                    if (metaLen !== 6) { console.log('pvr-viewer: corrupt cube map order'); break; }
+                    break;
                 case pvr.MetaData.TextureOrientation:
-                    if (metaLen !== 3) { console.log('pvr-viewer: corrupt TextureOrientation'); break; }
+                    if (metaLen !== 3) { console.log('pvr-viewer: corrupt texture orientation'); break; }
                     this.flipX = (metaView.getUint8(pos + 0) !== pvr.Orientation.Right);
                     this.flipY = (metaView.getUint8(pos + 1) !== pvr.Orientation.Down);
                     this.flipZ = (metaView.getUint8(pos + 2) !== pvr.Orientation.In);
+                    break;
+                case pvr.MetaData.BorderData:
+                    if (metaLen !== 12) { console.log('pvr-viewer: corrupt border data'); break; }
+                    const bx = metaView.getUint32(pos + 0);
+                    const by = metaView.getUint32(pos + 4);
+                    const bz = metaView.getUint32(pos + 8);
+                    console.log(`border data: ${bx}, ${by}, ${bz}`);
+                    break;
+                case pvr.MetaData.Padding:
+                    // this block should be skipped
+                    console.log(`skipping data: ${metaLen} bytes`);
                     break;
                 case pvr.MetaData.PerChannelType:
                     console.log(`PerChannelType: ${metaLen} bytes`);
@@ -118,15 +140,13 @@ export default class PVRParser {
                         //console.log(`${i}: ${metaView.getUint8(pos + i)}`);
                     }
                     break;
-                case pvr.MetaData.BorderData:
-                    console.log(`BorderData: ${metaLen} bytes`);
-                    for (let i = 0; i < metaLen; i++) {
-                        //console.log(`${i}: ${metaView.getUint8(pos + i)}`);
-                    }
+                case pvr.MetaData.SupercompressionGlobalData:
+                    console.log(`pvr-viewer: supercompression global data not supported`);
                     break;
                 case pvr.MetaData.MaxRange:
-                    if (metaLen !== 4) { console.log('pvr-viewer: corrupt MaxRange'); break; }
+                    if (metaLen !== 4) { console.log('pvr-viewer: corrupt max range'); break; }
                     this.maxRange = metaView.getFloat32(pos + 0, true);
+                    //console.log(`pvr-viewer: max range ${this.maxRange}`);
                     break;
                 default:
                     console.log(`pvr-viewer: unknown semantic ${semantic}`);
@@ -480,7 +500,7 @@ export default class PVRParser {
                 case pvr.PixelFormat.RGBD:
                     switch (this.channelType) {
                         case pvr.VariableType.UnsignedByteNorm:
-                            // ...
+                            eightcc.decompress_RGBD_UFloat(dec, enc, width, height, this.maxRange);
                             break;
                     }
                     break;
@@ -498,3 +518,37 @@ export default class PVRParser {
         return output;
     }
 }
+
+/*
+uncompressed texture data structure:
+
+for each MIP-Map Level in MIP-Map Count
+    for each Surface in Num. Surfaces
+        for each Face in Num. Faces
+            for each Slice in Depth
+                for each Row in Height
+                    for each Pixel in Width
+                        Byte data[Size_Based_On_PixelFormat]
+                    end
+                end
+            end
+        end
+    end
+end
+
+compressed texture data structure:
+
+for each MIP-Map Level in MIP-Map Count 
+    for each Surface in Num. Surfaces 
+        for each Face in Num. Faces 
+            for each Region by aligned Depth (Based_On_PixelFormat)
+                for each Region by aligned Height (Based_On_PixelFormat)
+                    for each Region by aligned Width (Based_On_PixelFormat)
+                        Byte data[Size_Based_On_PixelFormat] 
+                    end
+                end
+            end
+        end
+    end
+end 
+*/
