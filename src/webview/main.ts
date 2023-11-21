@@ -5,7 +5,7 @@ import {
     vsCodeDropdown,
     vsCodeOption,
     vsCodeTextField,
-    vsCodeDataGrid,
+    vsCodeDataGrid, DataGrid,
     vsCodeDataGridRow,
     vsCodeDataGridCell,
     vsCodeProgressRing, ProgressRing
@@ -71,7 +71,7 @@ function setWindowMessageListener(): void {
         switch (message.command) {
             case 'preview':
                 // image data has been received, so start the process to show it
-                handlePreviewCommand(message.buffer, message.width, message.height, message.flipX, message.flipY, message.premultiplied);
+                handlePreviewCommand(message.buffer, message.width, message.height, message.flipX, message.flipY, message.premultiplied, message.textureInfo);
                 break;
             case 'toggleTextureInfo':
                 const sideArea = document.getElementById('side-area') as HTMLElement;
@@ -87,7 +87,12 @@ function setWindowMessageListener(): void {
     });
 }
 
-function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number, flipX: boolean, flipY: boolean, premultiplied: boolean): void {
+function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number, flipX: boolean, flipY: boolean, premultiplied: boolean, textureInfo: object[]): void {
+    // set data grid with texture info
+    const infoGrid = document.getElementById('info-grid') as DataGrid;
+    infoGrid.rowsData = textureInfo;
+
+    // start the process of setting the canvas
     const imageData = new ImageData(new Uint8ClampedArray(buffer), width, height, {
         colorSpace: 'srgb'
     });

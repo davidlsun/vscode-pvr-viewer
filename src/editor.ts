@@ -64,6 +64,7 @@ class TextureDocument extends vscode.Disposable implements vscode.CustomDocument
     public flipX: boolean = false;
     public flipY: boolean = false;
     public premultiplied: boolean = false;
+    public textureInfo: object[] = [];
 
     public constructor(uri: vscode.Uri) {
         super(() => { });
@@ -79,6 +80,7 @@ class TextureDocument extends vscode.Disposable implements vscode.CustomDocument
         this.flipX = parser.flipX;
         this.flipY = parser.flipY;
         this.premultiplied = parser.premultiplied;
+        this.textureInfo = parser.textureInfo;
         return parser.decompress(0, 0, 0, 0, false);
     }
 
@@ -153,7 +155,8 @@ async function sendPreviewCommand(webview: vscode.Webview, document: TextureDocu
         height: document.height,
         flipX: document.flipX,
         flipY: document.flipY,
-        premultiplied: document.premultiplied
+        premultiplied: document.premultiplied,
+        textureInfo: document.textureInfo
     });
 }
 
@@ -213,55 +216,7 @@ function getWebviewContent(webview: vscode.Webview, scriptSrc: vscode.Uri, style
             </div>
         </div>
         <div id="side-area" hidden>
-            <vscode-data-grid id="info-grid" grid-template-columns="1fr 2fr">
-                <vscode-data-grid-row row-type="header">
-                    <vscode-data-grid-cell cell-type="columnheader" grid-column="1">Key</vscode-data-grid-cell>
-                    <vscode-data-grid-cell cell-type="columnheader" grid-column="2">Value</vscode-data-grid-cell>
-                </vscode-data-grid-row>
-                <vscode-data-grid-row>
-                    <vscode-data-grid-cell grid-column="1">Width</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="2">1024</vscode-data-grid-cell>
-                </vscode-data-grid-row>
-                <vscode-data-grid-row>
-                    <vscode-data-grid-cell grid-column="1">Height</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="2">512</vscode-data-grid-cell>
-                </vscode-data-grid-row>
-                <vscode-data-grid-row>
-                    <vscode-data-grid-cell grid-column="1">Depth</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="2">1</vscode-data-grid-cell>
-                </vscode-data-grid-row>
-                <vscode-data-grid-row>
-                    <vscode-data-grid-cell grid-column="1">Pixel Format</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="2">R32 G32 B32</vscode-data-grid-cell>
-                </vscode-data-grid-row>
-                <vscode-data-grid-row>
-                    <vscode-data-grid-cell grid-column="1">Channel Type</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="2">Signed Floating Point</vscode-data-grid-cell>
-                </vscode-data-grid-row>
-                <vscode-data-grid-row>
-                    <vscode-data-grid-cell grid-column="1">Color Space</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="2">Linear</vscode-data-grid-cell>
-                </vscode-data-grid-row>
-                <vscode-data-grid-row>
-                    <vscode-data-grid-cell grid-column="1">Mip Levels</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="2">11</vscode-data-grid-cell>
-                </vscode-data-grid-row>
-                <vscode-data-grid-row>
-                    <vscode-data-grid-cell grid-column="1">Face</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="2">1</vscode-data-grid-cell>
-                </vscode-data-grid-row>
-                <vscode-data-grid-row>
-                    <vscode-data-grid-cell grid-column="1">Array Surfaces</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="2">1</vscode-data-grid-cell>
-                </vscode-data-grid-row>
-                <vscode-data-grid-row>
-                    <vscode-data-grid-cell grid-column="1">Data Size</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="2">8.0 MiB</vscode-data-grid-cell>
-                </vscode-data-grid-row>
-                <vscode-data-grid-row>
-                    <vscode-data-grid-cell grid-column="1">Orientation</vscode-data-grid-cell>
-                    <vscode-data-grid-cell grid-column="2">+X +Y +Z</vscode-data-grid-cell>
-                </vscode-data-grid-row>
+            <vscode-data-grid id="info-grid" grid-template-columns="2fr 3fr" aria-label="Texture Info">
             </vscode-data-grid>
         </div>
     </div>

@@ -58,6 +58,7 @@ export default class PVRParser {
     public readonly flipY: boolean;
     public readonly flipZ: boolean;
     public readonly maxRange: float;
+    public readonly textureInfo: object[];
 
     public constructor(data: Uint8Array) {
         this._data = data;
@@ -89,6 +90,24 @@ export default class PVRParser {
         const metaDataSize = view.getUint32(48, true);
 
         this._dataOffset = HeaderSize + metaDataSize;
+
+        // create basic texture info. more will be added for metadata.
+        this.textureInfo = [];
+        if (this.depth === 1) {
+            this.textureInfo.push({ Key: "Dimensions", Value: `${this.width} x ${this.height}` });
+        } else {
+            this.textureInfo.push({ Key: "Dimensions", Value: `${this.width} x ${this.height} x ${this.depth}` });
+        }
+        if (this.pixelFormat === pvr.PixelFormat.NumCompressedPFs) {
+            this.textureInfo.push({ Key: "Pixel Format", Value: this.eightcc });
+        } else {
+            this.textureInfo.push({ Key: "Pixel Format", Value: pvr.PixelFormat[this.pixelFormat].toString() });
+        }
+        this.textureInfo.push({ Key: "Channel Type", Value: pvr.VariableType[this.channelType].toString() });
+        this.textureInfo.push({ Key: "Color Space", Value: pvr.ColorSpace[this.colorSpace].toString() });
+        this.textureInfo.push({ Key: "Mip Levels", Value: `${this.mipMapCount}` });
+        this.textureInfo.push({ Key: "Faces", Value: `${this.numFaces}` });
+        this.textureInfo.push({ Key: "Array Surfaces", Value: `${this.numSurfaces}` });
 
         // set default values for optional properties
         this.flipX = false;
@@ -122,13 +141,14 @@ export default class PVRParser {
                     this.flipX = (metaView.getUint8(pos + 0) !== pvr.Orientation.Right);
                     this.flipY = (metaView.getUint8(pos + 1) !== pvr.Orientation.Down);
                     this.flipZ = (metaView.getUint8(pos + 2) !== pvr.Orientation.In);
+                    this.textureInfo.push({ Key: "Orientation", Value: `${this.flipX ? '-' : '+'}X ${this.flipY ? '-' : '+'}Y ${this.flipZ ? '-' : '+'}Z`});
                     break;
                 case pvr.MetaData.BorderData:
                     if (metaLen !== 12) { console.log('pvr-viewer: corrupt border data'); break; }
                     const bx = metaView.getUint32(pos + 0);
                     const by = metaView.getUint32(pos + 4);
                     const bz = metaView.getUint32(pos + 8);
-                    console.log(`border data: ${bx}, ${by}, ${bz}`);
+                    this.textureInfo.push({ Key: "Border Data", Value: `${bx}, ${by}, ${bz}`});
                     break;
                 case pvr.MetaData.Padding:
                     // this block should be skipped
@@ -147,7 +167,7 @@ export default class PVRParser {
                 case pvr.MetaData.MaxRange:
                     if (metaLen !== 4) { console.log('pvr-viewer: corrupt max range'); break; }
                     this.maxRange = metaView.getFloat32(pos + 0, true);
-                    //console.log(`pvr-viewer: max range ${this.maxRange}`);
+                    this.textureInfo.push({ Key: "Max Range", Value: `${this.maxRange}`});
                     break;
                 case pvr.MetaData.UnknownFont80:
                 case pvr.MetaData.UnknownFont81:

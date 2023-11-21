@@ -75,7 +75,7 @@
           "type": "boolean",
           "default": false,
           "description": "Convert Linear to sRGB for display",
-          "markdownDescription": "sRGB sampling allows the Unity Editor to render Shaders in linear color space when Textures are in gamma color space. When you select to work in linear color space, the Editor defaults to using sRGB sampling. If your Textures are in linear color space, you need to work in linear color space and disable sRGB sampling for each Texture."
+          "markdownDescription": "Traditionally, all textures were considered linear, which means the value sampled was given as-is to the shader. sRGB sampling was introduced to allow shaders to work in linear color space when textures are in gamma color space. When viewing textures, sometimes linear textures actually have sRGB color values and don't need to be converted for display, and sometimes they do and it is helpful to see them displayed as sRGB."
         }
       }
     },
