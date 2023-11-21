@@ -6,7 +6,6 @@ Extension for Visual Studio Code that adds image preview for PVR (.pvr) texture 
 
 * Large textures are scaled down to fit the window.
 * Textures with premultiplied alpha are shown correctly.
-* Linear textures not converted to sRGB colorspace for display.
 * No zooming or other user control of the viewer.
 * No support for viewing cubemaps, mipmaps, arrays, 3D textures.
 * Floating point textures have no exposure control for display.

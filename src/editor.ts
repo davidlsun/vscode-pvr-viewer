@@ -73,6 +73,7 @@ class TextureDocument extends vscode.Disposable implements vscode.CustomDocument
     }
 
     private async _startLoadAsync(): Promise<ArrayBuffer> {
+        const config = vscode.workspace.getConfiguration('pvrViewer');
         const data = await vscode.workspace.fs.readFile(this.uri);
         const parser = new PVRParser(data);
         this.width = parser.width;
@@ -81,7 +82,7 @@ class TextureDocument extends vscode.Disposable implements vscode.CustomDocument
         this.flipY = parser.flipY;
         this.premultiplied = parser.premultiplied;
         this.textureInfo = parser.textureInfo;
-        return parser.decompress(0, 0, 0, 0, false);
+        return parser.decompress(0, 0, 0, 0, config.convertLinearToSrgbForDisplay);
     }
 
     public override dispose(): void {
