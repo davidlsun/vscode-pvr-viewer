@@ -6,13 +6,12 @@ const viewType = 'pvr.view';
 
 export function activate(context: vscode.ExtensionContext) {
     const provider = new TextureEditorProvider(context);
-    const options = {
-        "webviewOptions": { "retainContextWhenHidden": false },
-        "supportsMultipleEditorsPerDocument": false
-    };
 
     context.subscriptions.push(
-        vscode.window.registerCustomEditorProvider(viewType, provider, options)
+        vscode.window.registerCustomEditorProvider(viewType, provider, {
+            "webviewOptions": { "retainContextWhenHidden": false },
+            "supportsMultipleEditorsPerDocument": false
+        })
     );
 
     context.subscriptions.push(
@@ -25,9 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('pvrViewer.toggleTextureInfo', (_data: Object) => {
             const panel = provider.activeWebviewPanel;
             if (panel !== undefined) {
-                const vt = panel.viewType;
-                const title = panel.title;
-                console.log(`active: ${vt}, ${title}`);
+                //console.log(`active: ${panel.viewType}, ${panel.title}`);
                 panel.webview.postMessage({ command: 'toggleTextureInfo' });
             }
         })

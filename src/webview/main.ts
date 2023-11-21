@@ -1,6 +1,6 @@
 import {
     provideVSCodeDesignSystem,
-    vsCodeButton, Button,
+    vsCodeButton,
     vsCodeCheckbox,
     vsCodeDropdown,
     vsCodeOption,
@@ -23,27 +23,45 @@ provideVSCodeDesignSystem().register(
     vsCodeProgressRing(),
 );
 
-const vscode = acquireVsCodeApi();
+class PreviewState {
+
+    public sideAreaHidden: boolean;
+    public bottomAreaHidden: boolean;
+
+    public constructor() {
+        // constructor only called when there is no previous state
+        const sideArea = document.getElementById('side-area') as HTMLElement;
+        this.sideAreaHidden = sideArea.hidden;
+
+        const bottomArea = document.getElementById('bottom-area') as HTMLElement;
+        this.bottomAreaHidden = bottomArea.hidden;
+    }
+}
+
+function applyStateToDocument(state: PreviewState): void {
+    const sideArea = document.getElementById('side-area') as HTMLElement;
+    sideArea.hidden = state.sideAreaHidden;
+
+    const bottomArea = document.getElementById('bottom-area') as HTMLElement;
+    bottomArea.hidden = state.bottomAreaHidden;
+}
+
+const vscode = acquireVsCodeApi<PreviewState>();
+
+// if state is restored, it will be serialized json of type object
+const state = vscode.getState() ?? new PreviewState();
+if (!(state instanceof PreviewState)) {
+    applyStateToDocument(state);
+}
 
 window.addEventListener('load', main);
 
 function main(): void {
+    // start handling messages sent from the extension
     setWindowMessageListener();
 
     // inform vscode we are ready to receive messages
     vscode.postMessage({ command: 'ready' });
-
-    // setup our test button
-    const howdyButton = document.getElementById('howdy') as Button;
-    howdyButton?.addEventListener('click', () => {
-        vscode.postMessage({
-            command: 'info',
-            text: 'hey there pardner!🕺'
-        });
-    });
-
-    // colorspace option changed
-    //const colorspaceInput = document.getElementById('colorspace') as Dropdown;
 }
 
 function setWindowMessageListener(): void {
@@ -56,10 +74,14 @@ function setWindowMessageListener(): void {
                 handlePreviewCommand(message.buffer, message.width, message.height, message.flipX, message.flipY, message.premultiplied);
                 break;
             case 'toggleTextureInfo':
-                toggleTextureInfo();
+                const sideArea = document.getElementById('side-area') as HTMLElement;
+                state.sideAreaHidden = sideArea.hidden = !sideArea.hidden;
+                vscode.setState(state);
                 break;
             case 'toggleControlBar':
-                toggleControlBar();
+                const bottomArea = document.getElementById('bottom-area') as HTMLElement;
+                state.bottomAreaHidden = bottomArea.hidden = !bottomArea.hidden;
+                vscode.setState(state);
                 break;
         }
     });
@@ -94,14 +116,4 @@ function handlePreviewCommand(buffer: ArrayBuffer, width: number, height: number
         // inform extension we're done
         vscode.postMessage({ command: 'shown' });
     });
-}
-
-function toggleTextureInfo(): void {
-    const sideBar = document.getElementById('side-area') as HTMLCanvasElement;
-    sideBar.hidden = !sideBar.hidden;
-}
-
-function toggleControlBar(): void {
-    const bottomBar = document.getElementById('bottom-area') as HTMLCanvasElement;
-    bottomBar.hidden = !bottomBar.hidden;
 }

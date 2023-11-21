@@ -149,6 +149,13 @@ export default class PVRParser {
                     this.maxRange = metaView.getFloat32(pos + 0, true);
                     //console.log(`pvr-viewer: max range ${this.maxRange}`);
                     break;
+                case pvr.MetaData.UnknownFont80:
+                case pvr.MetaData.UnknownFont81:
+                case pvr.MetaData.UnknownFont83:
+                case pvr.MetaData.UnknownFont83:
+                case pvr.MetaData.UnknownFont84:
+                    //console.log(`pvr-viewer: font semantic ${semantic}`);
+                    break;
                 default:
                     console.log(`pvr-viewer: unknown semantic ${semantic}`);
                     break;

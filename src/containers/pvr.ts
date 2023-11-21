@@ -16,7 +16,12 @@ export enum MetaData
     PerChannelType,
     SupercompressionGlobalData,
     MaxRange,
-    NumMetaDataTypes
+    NumMetaDataTypes,
+    UnknownFont80 = 0xfcfc0050,
+    UnknownFont81 = 0xfcfc0051,
+    UnknownFont82 = 0xfcfc0052,
+    UnknownFont83 = 0xfcfc0053,
+    UnknownFont84 = 0xfcfc0054
 }
 
 // Axis

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import PVRParser from './containers/parser';
 
 class PanelTracker {
+
     private readonly _entries = new Set<{
         readonly uri: vscode.Uri;
         readonly panel: vscode.WebviewPanel;
