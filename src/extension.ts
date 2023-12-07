@@ -23,10 +23,14 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('pvrViewer.toggleTextureInfo', (_data: Object) => {
             const panel = provider.activeWebviewPanel;
-            if (panel !== undefined) {
-                //console.log(`active: ${panel.viewType}, ${panel.title}`);
-                panel.webview.postMessage({ command: 'toggleTextureInfo' });
-            }
+            panel?.webview.postMessage({ command: 'toggleTextureInfo' });
+        })
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('pvrViewer.toggleControlBar', (_data: Object) => {
+            const panel = provider.activeWebviewPanel;
+            panel?.webview.postMessage({ command: 'toggleControlBar' });
         })
     );
 }

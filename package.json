@@ -59,23 +59,25 @@
     "configuration": {
       "title": "PVR Viewer",
       "properties": {
-        "pvrViewer.fitSmallImagesToWindow": {
+        "pvrViewer.showTextureInfoByDefault": {
           "type": "boolean",
           "default": false,
-          "description": "Fit small images to window",
-          "markdownDescription": "If the image is smaller than the panel, it will be scaled up to fill the panel."
+          "description": "Start with texture info side panel visible for newly opened texture files."
         },
-        "pvrViewer.fitLargeImagesToWindow": {
+        "pvrViewer.showControlBarByDefault": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start with control bar bottom panel visible for newly opened texture files."
+        },
+        "pvrViewer.shrinkToFit": {
           "type": "boolean",
           "default": true,
-          "description": "Fit large images to window",
-          "markdownDescription": "If the image is too large to be shown without scrollbars, it will be scaled down to fit in the panel."
+          "description": "If the texture is too large to be shown without scrollbars, it will be scaled down to fit in the panel."
         },
         "pvrViewer.convertLinearToSrgbForDisplay": {
           "type": "boolean",
           "default": false,
-          "description": "Convert Linear to sRGB for display",
-          "markdownDescription": "Traditionally, all textures were considered linear, which means the value sampled was given as-is to the shader. sRGB sampling was introduced to allow shaders to work in linear color space when textures are in gamma color space. When viewing textures, sometimes linear textures actually have sRGB color values and don't need to be converted for display, and sometimes they do and it is helpful to see them displayed as sRGB."
+          "description": "Originally, rendering was performed in the gamma color space. Otherwise, gamma correction would be required on the final image before it can be displayed on the monitor because monitors are designed to display gamma color space images. With the advent of Physically Based Rendering (PBR), there has been a shift towards rendering in linear color space. For textures considered linear, the numerical values sampled are used as-is by the shader. sRGB sampling was introduced to allow shaders to more efficiently work in linear color space when textures are in gamma color space. When viewing textures, sometimes linear textures actually have sRGB color values and don't need to be converted for proper display, and sometimes they do and it is helpful to see them displayed as sRGB."
         }
       }
     },
@@ -89,7 +91,12 @@
         {
           "command": "pvrViewer.toggleTextureInfo",
           "when": "webviewId == 'pvr.view'",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "pvrViewer.toggleControlBar",
+          "when": "webviewId == 'pvr.view'",
+          "group": "navigation@2"
         }
       ]
     },
@@ -103,6 +110,12 @@
         "command": "pvrViewer.toggleTextureInfo",
         "category": "PVR Viewer",
         "title": "Toggle Texture Info",
+        "enablement": "activeWebviewPanelId == 'pvr.view'"
+      },
+      {
+        "command": "pvrViewer.toggleControlBar",
+        "category": "PVR Viewer",
+        "title": "Toggle Control Bar",
         "enablement": "activeWebviewPanelId == 'pvr.view'"
       }
     ]
@@ -122,7 +135,6 @@
     "@types/vscode-webview": "^1.57.4",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
-    "@vscode/codicons": "^0.0.35",
     "@vscode/test-cli": "^0.0.4",
     "@vscode/test-electron": "^2.3.6",
     "esbuild": "^0.19.5",

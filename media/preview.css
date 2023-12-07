@@ -25,7 +25,7 @@ body {
 }
 
 #main-container {
-    /* fill the entire panel, but requires body have no padding */
+    /* fill the entire panel, but this requires body to have no padding */
     width: 100vw;
     height: 100vh;
 
@@ -42,9 +42,6 @@ body {
     /* allow bottom bar to be optionally shown */
     display: flex;
     flex-direction: column;
-
-    /* allow bottom bar to be as narrow as it wants without scrollbars */
-    overflow-x: hidden;
 }
 
 #side-area {
@@ -59,8 +56,8 @@ body {
     border-style: solid;
     border-width: thin;
 
-    /* allow side bar to be as short as it wants without scrollbars */
-    overflow-y: hidden;
+    /* scroll bars within texture info panel if needed */
+    overflow: auto;
 }
 
 #info-grid {
@@ -84,17 +81,14 @@ body {
     /* padding to the edge of the window */
     padding: 8px;
 
-    /* scale down maintaining aspect ratio */
-    max-width: 100%;
-    max-height: 100%;
-
     /* center horizontally and vertically in cell */
     margin: auto;
 }
 
-#texture-canvas.flip-x {
-    /* add this class to canvas to mirror horizontally */
-    scale: -1 1;
+#texture-canvas.shrink-to-fit {
+    /* scale down maintaining aspect ratio */
+    max-width: 100%;
+    max-height: 100%;
 }
 
 #bottom-area {
@@ -103,9 +97,9 @@ body {
     flex: 0 0 auto;
 }
 
-#controls-bar {
+#control-bar {
     /* fixed height */
-    height: 50px;
+    /*height: 50px;*/
 
     /* arrange all children horizontally */
     display: flex;
@@ -114,37 +108,9 @@ body {
     margin: 8px;
 }
 
-#format-control {
+#control-bar div {
     justify-self: center;
     align-self: center;
-}
-
-#pixel-format {
-    min-width: 150px;
-}
-
-#colorspace-control {
-    /* first cell from the left on the bottom row */
-    justify-self: center;
-    align-self: center;
-}
-
-#colorspace {
-    min-width: 150px;
-}
-
-#channels-control {
-    justify-self: center;
-    align-self: center;
-}
-
-#miplevel-control {
-    justify-self: center;
-    align-self: center;
-}
-
-#miplevel {
-    min-width: 150px;
 }
 
 /* styling a label that adheres to the vscode design language */
@@ -163,26 +129,4 @@ body {
     font-size: var(--vscode-font-size);
     line-height: normal;
     margin-bottom: 2px;
-}
-
-/* codicons */
-#icons {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-}
-
-#icons .icon {
-    width: 140px;
-    padding: 20px;
-    font-size: 14px;
-    display: flex;
-    flex-direction: column;
-    text-align: center;
-}
-
-#icons .icon .codicon {
-    font-size: 32px;
-    padding-bottom: 16px;
 }

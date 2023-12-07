@@ -61,28 +61,32 @@ class TextureDocument extends vscode.Disposable implements vscode.CustomDocument
     public readonly buffer: Promise<ArrayBuffer>;
     public width: number = 0;
     public height: number = 0;
-    public flipX: boolean = false;
     public flipY: boolean = false;
     public premultiplied: boolean = false;
+    public faceOptions: string[] = [];
+    public surfaceOptions: string[] = [];
+    public mipOptions: string[] = [];
     public textureInfo: object[] = [];
 
     public constructor(uri: vscode.Uri) {
         super(() => { });
         this.uri = uri;
-        this.buffer = this._startLoadAsync();
+        this.buffer = this._startLoadAsync(0, 0, 0, 0);
     }
 
-    private async _startLoadAsync(): Promise<ArrayBuffer> {
+    private async _startLoadAsync(slice: number, face: number, surface: number, mip: number): Promise<ArrayBuffer> {
         const config = vscode.workspace.getConfiguration('pvrViewer');
         const data = await vscode.workspace.fs.readFile(this.uri);
         const parser = new PVRParser(data);
         this.width = parser.width;
         this.height = parser.height;
-        this.flipX = parser.flipX;
         this.flipY = parser.flipY;
         this.premultiplied = parser.premultiplied;
+        this.faceOptions = parser.faceOptions;
+        this.surfaceOptions = parser.surfaceOptions;
+        this.mipOptions = parser.mipOptions;
         this.textureInfo = parser.textureInfo;
-        return parser.decompress(0, 0, 0, 0, config.convertLinearToSrgbForDisplay);
+        return parser.decompress(slice, face, surface, mip, config.convertLinearToSrgbForDisplay);
     }
 
     public override dispose(): void {
@@ -126,18 +130,18 @@ export default class TextureEditorProvider implements vscode.CustomReadonlyEdito
             panel.webview.onDidReceiveMessage(message => {
                 switch (message.command) {
                     case 'ready':
-                        sendPreviewCommand(panel.webview, document);
+                        sendPreviewCommand(panel.webview, document, message.slice, message.face, message.surface, message.mip);
                         break;
                 }
             })
         );
 
         // setup initial content of new webview
+        const config = vscode.workspace.getConfiguration('pvrViewer');
         const scriptSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'out', 'webview.js'));
         const styleSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'media', 'preview.css'));
-        const iconsSrc = panel.webview.asWebviewUri(vscode.Uri.joinPath(this._context.extensionUri, 'node_modules', '@vscode/codicons', 'dist', 'codicon.css'));
         panel.webview.options = { enableScripts: true, localResourceRoots: [this._context.extensionUri] };
-        panel.webview.html = getWebviewContent(panel.webview, scriptSrc, styleSrc, iconsSrc);
+        panel.webview.html = getWebviewContent(panel.webview, config, scriptSrc, styleSrc);
     }
 
     public get activeWebviewPanel(): vscode.WebviewPanel | undefined {
@@ -145,7 +149,7 @@ export default class TextureEditorProvider implements vscode.CustomReadonlyEdito
     }
 }
 
-async function sendPreviewCommand(webview: vscode.Webview, document: TextureDocument): Promise<void> {
+async function sendPreviewCommand(webview: vscode.Webview, document: TextureDocument, _slice: number, _face: number, _surface: number, _mip: number): Promise<void> {
     // here is a good place to wait for loading to finish
     const buffer = await document.buffer;
 
@@ -154,14 +158,16 @@ async function sendPreviewCommand(webview: vscode.Webview, document: TextureDocu
         buffer: buffer,
         width: document.width,
         height: document.height,
-        flipX: document.flipX,
         flipY: document.flipY,
         premultiplied: document.premultiplied,
+        faceOptions: document.faceOptions,
+        surfaceOptions: document.surfaceOptions,
+        mipOptions: document.mipOptions,
         textureInfo: document.textureInfo
     });
 }
 
-function getWebviewContent(webview: vscode.Webview, scriptSrc: vscode.Uri, styleSrc: vscode.Uri, iconsSrc: vscode.Uri): string {
+function getWebviewContent(webview: vscode.Webview, config: vscode.WorkspaceConfiguration, scriptSrc: vscode.Uri, styleSrc: vscode.Uri): string {
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -169,56 +175,40 @@ function getWebviewContent(webview: vscode.Webview, scriptSrc: vscode.Uri, style
     <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; script-src ${webview.cspSource};">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="${styleSrc}" rel="stylesheet">
-    <link href="${iconsSrc}" rel="stylesheet">
 </head>
 <body>
     <vscode-progress-ring id="progress-spinner"></vscode-progress-ring>
-    <div id="main-container" data-vscode-context='{"webviewSection": "main", "preventDefaultContextMenuItems": true}'>
+    <div id="main-container" data-vscode-context='{"preventDefaultContextMenuItems": true}'>
         <div id="main-area">
-            <div id="canvas-wrapper"><canvas id="texture-canvas"></canvas></div>
-            <div id="bottom-area" hidden>
-                <div id="controls-bar">
+            <div id="canvas-wrapper"><canvas id="texture-canvas" class="${config.shrinkToFit ? 'shrink-to-fit' : ''}"></canvas></div>
+            <div id="bottom-area" ${config.showControlBarByDefault ? '' : 'hidden'}>
+                <div id="control-bar">
                     <div id="format-control">
-                        <vscode-text-field id="pixel-format" value="R8 G8 B8 A8 UNorm" readonly>Pixel Format</vscode-text-field>
+                        <vscode-text-field id="format" value="R8 G8 B8 A8 UNorm" readonly>Pixel Format</vscode-text-field>
                     </div>
-                    <div id="colorspace-control" class="dropdown-container">
-                        <label for="colorspace">Color Space</label>
-                        <vscode-dropdown id="colorspace">
-                            <vscode-option>Linear</vscode-option>
-                            <vscode-option>sRGB</vscode-option>
-                            <vscode-option>BT601</vscode-option>
-                            <vscode-option>BT709</vscode-option>
-                            <vscode-option>BT2020</vscode-option>
-                        </vscode-dropdown>
+                    <div id="face-control" class="dropdown-container">
+                        <label for="face">Face</label>
+                        <vscode-dropdown id="face"></vscode-dropdown>
                     </div>
-                    <div id="miplevel-control" class="dropdown-container">
-                        <label for="miplevel">Mip Level</label>
-                        <vscode-dropdown id="miplevel">
-                            <vscode-option>0 : 1024 x 1024</vscode-option>
-                            <vscode-option>1 : 512 x 512</vscode-option>
-                            <vscode-option>2 : 256 x 256</vscode-option>
-                            <vscode-option>3 : 128 x 128</vscode-option>
-                            <vscode-option>4 : 64 x 64</vscode-option>
-                            <vscode-option>5 : 32 x 32</vscode-option>
-                            <vscode-option>6 : 16 x 16</vscode-option>
-                            <vscode-option>7 : 8 x 8</vscode-option>
-                            <vscode-option>8 : 4 x 4</vscode-option>
-                            <vscode-option>9 : 2 x 2</vscode-option>
-                            <vscode-option>10 : 1 x 1</vscode-option>
-                        </vscode-dropdown>
+                    <div id="surface-control" class="dropdown-container">
+                        <label for="surface">Surface</label>
+                        <vscode-dropdown id="surface"></vscode-dropdown>
                     </div>
-                    <div id="channels-control" class="checkbox-container">
-                        <vscode-checkbox id="channel-red">R</vscode-checkbox>
-                        <vscode-checkbox id="channel-green">G</vscode-checkbox>
-                        <vscode-checkbox id="channel-blue">B</vscode-checkbox>
-                        <vscode-checkbox id="channel-alpha">A</vscode-checkbox>
+                    <div id="mip-control" class="dropdown-container">
+                        <label for="mip">Mip Level</label>
+                        <vscode-dropdown id="mip"></vscode-dropdown>
+                    </div>
+                    <div id="channel-control" class="checkbox-container">
+                        <label for="channel-red">R</label><vscode-checkbox id="channel-red"></vscode-checkbox>
+                        <label for="channel-green">G</label><vscode-checkbox id="channel-green"></vscode-checkbox>
+                        <label for="channel-blue">B</label><vscode-checkbox id="channel-blue"></vscode-checkbox>
+                        <label for="channel-alpha">A</label><vscode-checkbox id="channel-alpha"></vscode-checkbox>
                     </div>
                 </div>
             </div>
         </div>
-        <div id="side-area" hidden>
-            <vscode-data-grid id="info-grid" grid-template-columns="2fr 3fr" aria-label="Texture Info">
-            </vscode-data-grid>
+        <div id="side-area" ${config.showTextureInfoByDefault ? '' : 'hidden'}>
+            <vscode-data-grid id="info-grid" grid-template-columns="2fr 3fr" aria-label="Texture Info"></vscode-data-grid>
         </div>
     </div>
     <script src="${scriptSrc}"></script>
